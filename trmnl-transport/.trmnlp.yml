@@ -1,0 +1,24 @@
+# Local preview settings for `trmnlp serve`. Not uploaded to TRMNL.
+---
+watch:
+  - .trmnlp.yml
+  - src
+
+time_zone: Europe/London
+
+# Your values, used only when previewing on your computer. This file isn't uploaded to TRMNL,
+# but it does hold your rail key, so don't share it.
+custom_fields:
+  bus_stop_1: "490004972S"   # Champion Grove stop E (southbound)
+  bus_stop_2: "490004972N"   # Champion Grove stop H (northbound)
+  station_crs: DMK
+  station_operators: "Thameslink, London Overground, Southeastern"
+  second_station_crs: EDW
+  rail_api_key: "PUT_YOUR_RAIL_DATA_KEY_HERE"
+
+variables:
+  trmnl: {}
+
+# This is a private plugin, not a published recipe, so it needs no author contact field.
+ignored_lint_rules:
+  - author_contact_method

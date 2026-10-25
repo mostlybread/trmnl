@@ -1,0 +1,20 @@
+<div class="layout layout--row layout--top layout--stretch-x">
+  <div class="columns">
+    <div class="column">
+      {% render "bus_stops", stop_ids: stop_ids, arrivals: arrivals, now_s: now_s, max_routes: 1, times_per_route: 3, hide_under_mins: 1 %}
+    </div>
+    <div class="column">
+      <span class="label label--underline">{{ main.locationName }}</span>
+      {% render "trains", services: main.trainServices, max_trains: 3, show_plat: false %}
+    </div>
+    <div class="column">
+      <span class="label label--underline">{{ second.locationName }}</span>
+      {% render "trains", services: second.trainServices, max_trains: 3, show_plat: false %}
+    </div>
+  </div>
+</div>
+
+<div class="title_bar">
+  <span class="title">Departures</span>
+  <span class="instance">Updated {{ now_local }}</span>
+</div>

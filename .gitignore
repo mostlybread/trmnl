@@ -1,0 +1,5 @@
+node_modules/
+_build/
+report/
+test/out/
+.DS_Store

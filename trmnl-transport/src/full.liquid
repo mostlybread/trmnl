@@ -1,0 +1,27 @@
+<div class="layout layout--row layout--top layout--stretch-x">
+  <div class="columns">
+    <div class="column gap col-buses">
+      <span class="title">Buses</span>
+      {% render "bus_stops", stop_ids: stop_ids, arrivals: arrivals, now_s: now_s, max_routes: 4, times_per_route: 3, hide_under_mins: 1 %}
+    </div>
+    <div class="column gap--small">
+      <span class="title">{{ main.locationName | default: settings.station_crs }}</span>
+      {%- comment -%}
+        Two-by-two grid: the main station's operators fill the first cells and the
+        second station takes whatever cell is left, so the main station gets most of the room.
+      {%- endcomment -%}
+      <div class="grid grid--cols-2 gap--small rail-grid">
+        {% render "station_by_operator", board: main, operators: operators, per_operator: 5, show_plat: true %}
+        <div class="flex flex--col flex--left gap--xsmall second-station">
+          <span class="label label--underline">{{ second.locationName | default: settings.second_station_crs }}</span>
+          {% render "trains", services: second.trainServices, max_trains: 5, show_plat: true %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="title_bar">
+  <span class="title">Departures</span>
+  <span class="instance">Updated {{ now_local }}</span>
+</div>

@@ -1,0 +1,14 @@
+{
+  "name": "trmnl-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node build.mjs && node test/run.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.2",
+    "liquidjs": "10.21.0",
+    "playwright-core": "1.56.1"
+  }
+}

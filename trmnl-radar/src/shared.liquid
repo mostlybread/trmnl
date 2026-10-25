@@ -1,0 +1,308 @@
+{%- comment -%}
+  Rain radar screen. Polling URLs, in order:
+    IDX_0  RainViewer's list of radar images (free, no key)
+    IDX_1  Open-Meteo for temperature, wind and when rain is due
+  The map is drawn in the browser: coastline and towns from the data below,
+  radar tiles from RainViewer turned into black-and-white patterns for e-ink.
+{%- endcomment -%}
+
+{%- assign settings = trmnl.plugin_settings.custom_fields_values -%}
+{%- assign place = settings.place_name | default: "Rain radar" -%}
+{%- assign loc = settings.location | default: "51.4660,-0.0880" | split: "," -%}
+{%- assign utc_offset = trmnl.user.utc_offset | default: IDX_1.utc_offset_seconds | default: 0 -%}
+{%- assign now_s = "now" | date: "%s" | plus: utc_offset -%}
+{%- assign today_short = now_s | date: "%a %-d %b" -%}
+{%- assign frame = IDX_0.radar.past | last -%}
+{%- assign current = IDX_1.current -%}
+{%- assign hourly = IDX_1.hourly -%}
+{%- assign night = false -%}{%- if current.is_day == 0 -%}{%- assign night = true -%}{%- endif -%}
+{%- comment -%} An older radar image (about 30 minutes back) to see which way the rain is moving. {%- endcomment -%}
+{%- assign back = IDX_0.radar.past.size | minus: 4 -%}{%- if back < 0 -%}{%- assign back = 0 -%}{%- endif -%}
+{%- assign old_frame = IDX_0.radar.past[back] -%}
+{%- if frame -%}{%- assign radar_time = frame.time | plus: utc_offset | date: "%H:%M" -%}{%- endif -%}
+
+{%- comment -%} When rain is due, as on the weather screen: 0.1 mm or a 50% chance in an hour. {%- endcomment -%}
+{%- assign wet_now = false -%}
+{%- assign code_now = current.weather_code | default: 0 -%}
+{%- if current.precipitation >= 0.1 -%}{%- assign wet_now = true -%}{%- endif -%}
+{%- if code_now >= 51 and code_now <= 67 -%}{%- assign wet_now = true -%}{%- endif -%}
+{%- if code_now >= 80 -%}{%- assign wet_now = true -%}{%- endif -%}
+{%- assign rain_hour = nil -%}
+{%- assign last_hour = hourly.time.size | minus: 1 -%}
+{%- for i in (1..last_hour) -%}
+  {%- assign mm = hourly.precipitation[i] | default: 0 -%}
+  {%- assign pc = hourly.precipitation_probability[i] | default: 0 -%}
+  {%- assign wet = false -%}
+  {%- if mm >= 0.1 or pc >= 50 -%}{%- assign wet = true -%}{%- endif -%}
+  {%- if wet != wet_now -%}{%- assign rain_hour = hourly.time[i] | slice: 11, 5 -%}{%- break -%}{%- endif -%}
+{%- endfor -%}
+{%- if wet_now -%}
+  {%- if rain_hour -%}{%- capture rain_text -%}Forecast: dry from about {{ rain_hour }}{%- endcapture -%}
+  {%- else -%}{%- assign rain_text = "Forecast: wet for the next 12 hours" -%}{%- endif -%}
+{%- elsif rain_hour -%}
+  {%- capture rain_text -%}Forecast: rain from about {{ rain_hour }}{%- endcapture -%}
+{%- else -%}
+  {%- assign rain_text = "Forecast: dry for the next 12 hours" -%}
+{%- endif -%}
+
+{%- comment -%} Wind: arrow pointing the way it blows, speed, where it's from, gusts. Args: speed, dir, gust. {%- endcomment -%}
+{% template wind %}
+{%- assign dir = dir | default: 0 -%}
+{%- assign compass = "N,NE,E,SE,S,SW,W,NW" | split: "," -%}
+{%- assign idx = dir | plus: 22.5 | divided_by: 45 | floor | modulo: 8 -%}
+{%- assign toward = dir | plus: 180 | modulo: 360 -%}
+<span class="label"><svg class="wx-arrow" viewBox="0 0 20 20" width="1em" height="1em"><g transform="rotate({{ toward }} 10 10)"><path d="M10 2l6 14-6-4-6 4z" fill="black"/></g></svg> {{ speed | round }} mph {{ compass[idx] }}{% if gust %}, gusts {{ gust | round }}{% endif %}</span>
+{% endtemplate %}
+
+{%- comment -%}
+  Weather icon drawn as SVG, so it needs no image hosting and stays sharp on e-ink.
+  Args: code (WMO weather code), night (true to show a moon), size (px).
+{%- endcomment -%}
+{% template weather_icon %}
+{%- assign k = "cloud" -%}
+{%- case code -%}
+  {%- when 0, 1 -%}{%- assign k = "sun" -%}
+  {%- when 2 -%}{%- assign k = "part" -%}
+  {%- when 3 -%}{%- assign k = "cloud" -%}
+  {%- when 45, 48 -%}{%- assign k = "fog" -%}
+  {%- when 51, 53, 55, 56, 57 -%}{%- assign k = "drizzle" -%}
+  {%- when 61, 63, 65, 66, 67 -%}{%- assign k = "rain" -%}
+  {%- when 71, 73, 75, 77, 85, 86 -%}{%- assign k = "snow" -%}
+  {%- when 80, 81, 82 -%}{%- assign k = "showers" -%}
+  {%- when 95, 96, 99 -%}{%- assign k = "storm" -%}
+{%- endcase -%}
+<svg class="wx-icon" viewBox="0 0 64 64" width="{{ size }}" height="{{ size }}" fill="white" stroke="black" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+  {%- if k == "sun" or k == "part" or k == "showers" -%}
+    {%- if k == "sun" -%}{%- assign cx = 32 -%}{%- assign cy = 32 -%}{%- assign r = 12 -%}{%- assign ray = 20 -%}
+    {%- else -%}{%- assign cx = 42 -%}{%- assign cy = 19 -%}{%- assign r = 9 -%}{%- assign ray = 15 -%}{%- endif -%}
+    {%- if night -%}
+      <path d="M{{ cx | plus: 2 }} {{ cy | minus: r | minus: 3 }} a{{ r | plus: 3 }} {{ r | plus: 3 }} 0 1 0 {{ r | plus: 5 }} {{ r | plus: 12 }} a{{ r }} {{ r }} 0 0 1 -{{ r | plus: 5 }} -{{ r | plus: 12 }}z" fill="black"/>
+    {%- else -%}
+      <g>
+        {%- for a in (0..7) -%}
+          {%- assign dx = "1,0.71,0,-0.71,-1,-0.71,0,0.71" | split: "," -%}
+          {%- assign dy = "0,0.71,1,0.71,0,-0.71,-1,-0.71" | split: "," -%}
+          {%- assign ix = dx[a] | times: 1.0 -%}{%- assign iy = dy[a] | times: 1.0 -%}
+          {%- assign inner = r | plus: 4 -%}
+          <line x1="{{ ix | times: inner | plus: cx }}" y1="{{ iy | times: inner | plus: cy }}" x2="{{ ix | times: ray | plus: cx }}" y2="{{ iy | times: ray | plus: cy }}"/>
+        {%- endfor -%}
+      </g>
+      <circle cx="{{ cx }}" cy="{{ cy }}" r="{{ r }}" fill="black"/>
+    {%- endif -%}
+  {%- endif -%}
+  {%- if k != "sun" and k != "fog" -%}
+    {%- assign lift = -8 -%}{%- assign shift = 0 -%}
+    {%- if k == "cloud" -%}{%- assign lift = 0 -%}{%- elsif k == "part" -%}{%- assign lift = 4 -%}{%- endif -%}
+    {%- if k == "part" or k == "showers" -%}{%- assign shift = -6 -%}{%- endif -%}
+    <path transform="translate({{ shift }} {{ lift }})" d="M18 50h30a10 10 0 0 0 1-20a14 14 0 0 0-27-4a12 12 0 0 0-4 24z"/>
+  {%- endif -%}
+  {%- case k -%}
+    {%- when "rain", "showers" -%}
+      <path d="M22 48l-3 9M32 48l-3 9M42 48l-3 9" stroke-width="4"/>
+    {%- when "drizzle" -%}
+      <path d="M23 50l-1 3M33 50l-1 3M43 50l-1 3M28 56l-1 3M38 56l-1 3" stroke-width="3.5"/>
+    {%- when "snow" -%}
+      <g fill="black" stroke="none"><circle cx="22" cy="51" r="2.6"/><circle cx="32" cy="55" r="2.6"/><circle cx="42" cy="51" r="2.6"/><circle cx="27" cy="59" r="2.6"/><circle cx="37" cy="59" r="2.6"/></g>
+    {%- when "storm" -%}
+      <path d="M34 40l-8 12h7l-4 10 11-14h-7l4-8z" fill="black" stroke-width="2"/>
+    {%- when "fog" -%}
+      <path d="M10 22h44M14 32h40M10 42h40M16 52h34"/>
+  {%- endcase -%}
+</svg>
+{% endtemplate %}
+
+{%- comment -%} One key entry. Args: level (1 light, 2 moderate, 3 heavy), text. {%- endcomment -%}
+{% template key %}
+<div class="flex flex--row flex--left flex--center-y gap--small"><span class="rr-key rr-key--{{ level }}"></span><span class="label">{{ text }}</span></div>
+{% endtemplate %}
+
+<style>
+  .rr-map { position: relative; flex: 0 0 560px; height: 392px; border: 2px solid black; overflow: hidden; }
+  .rr-map > * { position: absolute; left: 0; top: 0; }
+  .rr-map text { font-family: var(--font-small-font-family); fill: black; paint-order: stroke; stroke: white; stroke-width: 4px; }
+  .rr-map .town { font-size: 15px; }
+  .rr-map .home { font-size: 20px; font-weight: 700; }
+  .rr-side { min-width: 0; }
+  .rr-key { display: inline-block; width: 30px; height: 20px; border: 1.5px solid black; }
+  .rr-key--1 { background: repeating-linear-gradient(45deg, black 0 2px, white 2px 6px); }
+  .rr-key--2 { background: repeating-linear-gradient(0deg, black 0 2px, transparent 2px 5px), repeating-linear-gradient(90deg, black 0 2px, white 2px 5px); }
+  .rr-key--3 { background: black; }
+  .wx-arrow { vertical-align: -0.15em; }
+</style>
+
+<script type="application/json" id="rr-land">[[[-3.6,53.2],[2.8,53.2],[2.8,50],[-2.914,50],[1.222,50],[1.262,50.008],[1.391,50.075],[1.456,50.124],[1.489,50.185],[1.521,50.215],[1.557,50.217],[1.654,50.187],[1.665,50.187],[1.672,50.192],[1.672,50.199],[1.654,50.2],[1.643,50.212],[1.665,50.212],[1.665,50.221],[1.625,50.224],[1.611,50.232],[1.593,50.256],[1.55,50.27],[1.543,50.278],[1.543,50.31],[1.55,50.349],[1.571,50.376],[1.611,50.371],[1.611,50.378],[1.553,50.405],[1.553,50.411],[1.575,50.445],[1.579,50.533],[1.611,50.548],[1.582,50.575],[1.575,50.636],[1.564,50.678],[1.568,50.717],[1.6,50.771],[1.607,50.79],[1.582,50.85],[1.582,50.869],[1.615,50.884],[1.654,50.889],[1.697,50.926],[1.73,50.943],[1.921,50.997],[1.939,50.994],[1.975,51.007],[2.133,51.019],[2.306,51.055],[2.317,51.06],[2.385,51.055],[2.468,51.068],[2.507,51.08],[2.543,51.097],[2.579,51.105],[2.716,51.17],[2.8,51.247],[2.8,53.2],[-3.6,53.2]],[[-3.325,53.2],[0.344,53.2],[0.355,53.189],[0.358,53.145],[0.337,53.093],[0.329,53.086],[0.283,53.074],[0.193,53.02],[0.16,53.008],[0.081,52.939],[0.059,52.926],[0.023,52.912],[0.009,52.899],[0.009,52.887],[0.041,52.885],[0.092,52.892],[0.106,52.89],[0.171,52.861],[0.221,52.814],[0.247,52.796],[0.265,52.804],[0.326,52.802],[0.34,52.797],[0.369,52.774],[0.383,52.769],[0.38,52.791],[0.398,52.809],[0.427,52.828],[0.437,52.841],[0.455,52.892],[0.484,52.934],[0.52,52.956],[0.571,52.97],[0.625,52.976],[0.671,52.975],[0.664,52.981],[0.686,52.986],[0.751,52.975],[0.837,52.975],[0.877,52.968],[0.92,52.954],[0.97,52.948],[1.013,52.959],[0.992,52.968],[0.967,52.968],[0.967,52.975],[1.276,52.929],[1.395,52.892],[1.643,52.775],[1.672,52.755],[1.697,52.731],[1.715,52.684],[1.748,52.625],[1.741,52.603],[1.748,52.588],[1.748,52.532],[1.769,52.487],[1.766,52.476],[1.755,52.468],[1.73,52.416],[1.726,52.397],[1.683,52.325],[1.629,52.27],[1.633,52.2],[1.582,52.081],[1.503,52.061],[1.489,52.049],[1.471,52.056],[1.463,52.036],[1.456,52.029],[1.424,52.002],[1.355,51.955],[1.345,51.943],[1.334,51.94],[1.265,51.994],[1.237,52],[1.186,52.026],[1.157,52.029],[1.157,52.022],[1.193,52],[1.215,51.992],[1.269,51.982],[1.276,51.977],[1.276,51.961],[1.273,51.956],[1.251,51.96],[1.204,51.953],[1.165,51.967],[1.143,51.967],[1.067,51.953],[1.096,51.946],[1.262,51.94],[1.283,51.946],[1.28,51.928],[1.201,51.877],[1.229,51.867],[1.265,51.864],[1.287,51.882],[1.287,51.86],[1.276,51.845],[1.219,51.811],[1.168,51.791],[1.136,51.782],[1.064,51.776],[1.046,51.777],[1.039,51.782],[0.988,51.83],[0.981,51.843],[0.977,51.825],[0.963,51.815],[0.923,51.803],[0.887,51.782],[0.88,51.752],[0.873,51.747],[0.837,51.733],[0.823,51.733],[0.79,51.742],[0.769,51.74],[0.7,51.72],[0.751,51.708],[0.761,51.693],[0.79,51.71],[0.851,51.718],[0.884,51.727],[0.913,51.742],[0.931,51.744],[0.945,51.733],[0.949,51.725],[0.938,51.706],[0.952,51.678],[0.941,51.673],[0.938,51.664],[0.938,51.641],[0.934,51.636],[0.913,51.624],[0.938,51.625],[0.949,51.622],[0.952,51.617],[0.923,51.588],[0.873,51.56],[0.815,51.538],[0.772,51.527],[0.693,51.536],[0.646,51.536],[0.625,51.522],[0.581,51.517],[0.571,51.509],[0.553,51.517],[0.524,51.517],[0.455,51.506],[0.441,51.477],[0.43,51.467],[0.383,51.453],[0.448,51.46],[0.47,51.48],[0.535,51.492],[0.697,51.477],[0.711,51.47],[0.722,51.457],[0.722,51.446],[0.715,51.441],[0.693,51.44],[0.643,51.445],[0.61,51.424],[0.574,51.419],[0.556,51.413],[0.585,51.391],[0.671,51.391],[0.715,51.384],[0.704,51.396],[0.7,51.409],[0.704,51.419],[0.725,51.419],[0.74,51.387],[0.765,51.364],[0.977,51.349],[1.1,51.374],[1.424,51.392],[1.449,51.382],[1.435,51.343],[1.42,51.33],[1.384,51.33],[1.377,51.327],[1.388,51.288],[1.406,51.261],[1.413,51.222],[1.406,51.183],[1.384,51.151],[1.355,51.131],[1.291,51.117],[1.262,51.104],[1.229,51.104],[1.208,51.095],[1.201,51.087],[1.172,51.077],[1.107,51.077],[1.085,51.073],[1.067,51.065],[1.028,51.041],[0.967,50.982],[0.981,50.918],[0.945,50.909],[0.801,50.94],[0.761,50.931],[0.664,50.871],[0.625,50.859],[0.409,50.83],[0.365,50.818],[0.344,50.8],[0.344,50.795],[0.308,50.781],[0.272,50.747],[0.232,50.747],[0.157,50.761],[0.121,50.761],[0.077,50.779],[0.016,50.785],[-0.175,50.828],[-0.207,50.832],[-0.232,50.822],[-0.268,50.832],[-0.398,50.801],[-0.571,50.801],[-0.733,50.768],[-0.758,50.778],[-0.769,50.774],[-0.772,50.766],[-0.765,50.747],[-0.772,50.737],[-0.79,50.73],[-0.812,50.736],[-0.913,50.778],[-0.905,50.788],[-0.862,50.801],[-0.862,50.808],[-0.905,50.83],[-0.923,50.822],[-0.931,50.823],[-0.92,50.837],[-0.938,50.844],[-0.97,50.847],[-1.021,50.844],[-1.035,50.827],[-1.042,50.801],[-1.057,50.783],[-1.082,50.781],[-1.103,50.795],[-1.067,50.844],[-1.089,50.85],[-1.165,50.844],[-1.129,50.825],[-1.125,50.818],[-1.121,50.8],[-1.125,50.788],[-1.139,50.781],[-1.15,50.781],[-1.186,50.793],[-1.201,50.808],[-1.233,50.818],[-1.255,50.832],[-1.301,50.844],[-1.337,50.872],[-1.467,50.918],[-1.467,50.911],[-1.424,50.899],[-1.323,50.825],[-1.316,50.812],[-1.316,50.8],[-1.42,50.788],[-1.406,50.781],[-1.406,50.774],[-1.478,50.764],[-1.489,50.758],[-1.525,50.761],[-1.561,50.719],[-1.582,50.722],[-1.604,50.732],[-1.694,50.741],[-1.755,50.722],[-1.773,50.72],[-1.856,50.727],[-1.895,50.717],[-1.939,50.692],[-1.946,50.698],[-1.949,50.714],[-1.989,50.72],[-2.021,50.72],[-2.032,50.737],[-2.039,50.741],[-2.083,50.698],[-2.047,50.707],[-2.036,50.714],[-2.014,50.688],[-2.003,50.682],[-1.953,50.676],[-1.946,50.668],[-1.953,50.651],[-1.931,50.644],[-1.967,50.617],[-1.964,50.602],[-1.985,50.597],[-2.083,50.597],[-2.158,50.621],[-2.342,50.634],[-2.378,50.648],[-2.399,50.646],[-2.435,50.638],[-2.461,50.607],[-2.464,50.585],[-2.457,50.575],[-2.432,50.57],[-2.428,50.558],[-2.453,50.528],[-2.461,50.528],[-2.461,50.565],[-2.482,50.59],[-2.695,50.693],[-2.864,50.734],[-2.889,50.734],[-2.961,50.724],[-2.997,50.709],[-3.022,50.707],[-3.058,50.714],[-3.127,50.685],[-3.166,50.693],[-3.26,50.675],[-3.296,50.638],[-3.368,50.617],[-3.407,50.621],[-3.422,50.629],[-3.451,50.673],[-3.465,50.678],[-3.469,50.676],[-3.469,50.666],[-3.454,50.658],[-3.443,50.624],[-3.433,50.611],[-3.469,50.585],[-3.483,50.568],[-3.505,50.521],[-3.505,50.501],[-3.487,50.459],[-3.533,50.455],[-3.548,50.447],[-3.555,50.432],[-3.548,50.416],[-3.533,50.41],[-3.487,50.411],[-3.487,50.405],[-3.497,50.384],[-3.515,50.379],[-3.526,50.351],[-3.541,50.344],[-3.569,50.356],[-3.577,50.334],[-3.598,50.325],[-3.6,50.212],[-3.6,50.459],[-3.6,50.141],[-3.6,51.247],[-3.6,51.227],[-3.559,51.229],[-3.433,51.21],[-3.404,51.191],[-3.386,51.186],[-3.271,51.19],[-3.163,51.207],[-3.098,51.205],[-3.058,51.208],[-3.029,51.22],[-3.022,51.213],[-3.037,51.2],[-3.022,51.193],[-3.001,51.22],[-3.001,51.24],[-3.008,51.254],[-3.011,51.311],[-3.022,51.323],[-2.993,51.321],[-2.986,51.347],[-2.965,51.365],[-2.961,51.374],[-2.975,51.384],[-2.954,51.399],[-2.921,51.394],[-2.885,51.418],[-2.817,51.473],[-2.799,51.482],[-2.781,51.489],[-2.716,51.499],[-2.695,51.512],[-2.608,51.607],[-2.579,51.619],[-2.576,51.636],[-2.558,51.659],[-2.5,51.696],[-2.464,51.725],[-2.407,51.742],[-2.389,51.75],[-2.381,51.762],[-2.385,51.774],[-2.399,51.782],[-2.403,51.764],[-2.421,51.754],[-2.482,51.744],[-2.522,51.706],[-2.583,51.681],[-2.666,51.617],[-2.713,51.587],[-2.759,51.58],[-2.817,51.556],[-2.86,51.546],[-2.943,51.543],[-2.957,51.546],[-2.975,51.563],[-3.011,51.538],[-3.015,51.531],[-3.076,51.507],[-3.091,51.506],[-3.13,51.48],[-3.145,51.46],[-3.173,51.453],[-3.159,51.431],[-3.166,51.411],[-3.184,51.397],[-3.22,51.403],[-3.289,51.384],[-3.541,51.399],[-3.559,51.406],[-3.6,51.446],[-3.6,53.2],[-1.759,53.2],[-3.325,53.2]],[[0.913,51.413],[0.934,51.397],[0.941,51.382],[0.938,51.37],[0.913,51.364],[0.794,51.37],[0.758,51.386],[0.743,51.401],[0.733,51.413],[0.747,51.44],[0.754,51.446],[0.769,51.448],[0.891,51.421],[0.913,51.413]],[[-1.082,50.714],[-1.064,50.693],[-1.064,50.685],[-1.075,50.678],[-1.129,50.666],[-1.157,50.651],[-1.165,50.641],[-1.165,50.609],[-1.168,50.604],[-1.28,50.582],[-1.316,50.589],[-1.496,50.673],[-1.535,50.67],[-1.55,50.665],[-1.568,50.658],[-1.546,50.687],[-1.507,50.709],[-1.42,50.734],[-1.424,50.72],[-1.402,50.722],[-1.377,50.734],[-1.345,50.761],[-1.319,50.773],[-1.294,50.773],[-1.143,50.734],[-1.111,50.732],[-1.096,50.727],[-1.096,50.714],[-1.082,50.714]],[[-0.959,50.808],[-0.959,50.801],[-0.938,50.788],[-0.938,50.781],[-1.021,50.788],[-1.021,50.795],[-0.999,50.801],[-0.974,50.83],[-0.959,50.83],[-0.949,50.823],[-0.949,50.818],[-0.959,50.808]]]</script>
+<script>
+  // Everything the map needs from the data, filled in by Liquid.
+  window.RADAR = {
+    lat: {{ loc[0] | strip | default: 51.466 }}, lon: {{ loc[1] | strip | default: -0.088 }},
+    tiles: {% if frame %}"{{ IDX_0.host }}{{ frame.path }}"{% else %}null{% endif %},
+    oldTiles: {% if old_frame and old_frame.time != frame.time %}"{{ IDX_0.host }}{{ old_frame.path }}"{% else %}null{% endif %},
+    minutes: {% if old_frame %}{{ frame.time | minus: old_frame.time | divided_by: 60 }}{% else %}0{% endif %}
+  };
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var R = window.RADAR, box = document.getElementById('rr-map');
+  if (!box) return;
+  var W = box.clientWidth, H = box.clientHeight;
+  var Z = 8, TS = 256 * Math.pow(2, Z);            // map scale: web mercator zoom 8, about 380 m a pixel
+  var RADAR_Z = 7;                                  // radar tiles come one zoom out and are drawn at double size
+  function merc(lon, lat) {
+    return [(lon + 180) / 360 * TS, (1 - Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) / Math.PI) / 2 * TS];
+  }
+  var home = merc(R.lon, R.lat), ox = home[0] - W * 0.55, oy = home[1] - H * 0.5;
+  function P(lon, lat) { var p = merc(lon, lat); return [p[0] - ox, p[1] - oy]; }
+  var mPerPx = 156543.03 * Math.cos(R.lat * Math.PI / 180) / Math.pow(2, Z);
+  var NS = 'http://www.w3.org/2000/svg';
+  function svg(id) { var s = document.createElementNS(NS, 'svg'); s.setAttribute('width', W); s.setAttribute('height', H); s.id = id; box.appendChild(s); return s; }
+  function el(parent, name, attrs, text) {
+    var e = document.createElementNS(NS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text) e.textContent = text;
+    parent.appendChild(e); return e;
+  }
+
+  // 1. Sea (dotted) and land (white)
+  var base = svg('rr-base');
+  var defs = el(base, 'defs', {});
+  var sea = el(defs, 'pattern', { id: 'rr-sea', width: 6, height: 6, patternUnits: 'userSpaceOnUse' });
+  el(sea, 'rect', { width: 6, height: 6, fill: 'white' });
+  el(sea, 'circle', { cx: 3, cy: 3, r: 0.9, fill: 'black' });
+  el(base, 'rect', { width: W, height: H, fill: 'url(#rr-sea)' });
+  var land = JSON.parse(document.getElementById('rr-land').textContent), d = '';
+  land.forEach(function (ring) {
+    d += 'M' + ring.map(function (p) { var q = P(p[0], p[1]); return q[0].toFixed(1) + ' ' + q[1].toFixed(1); }).join('L') + 'Z';
+  });
+  el(base, 'path', { d: d, fill: 'white', stroke: 'black', 'stroke-width': 1.5 });
+
+  // 2. Rain, as patterns: light = stripes, moderate = grid, heavy = solid
+  var canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H; box.appendChild(canvas);
+  var marks = svg('rr-marks');
+  var near = document.getElementById('rr-near');
+
+  // 3. Towns (skipping any whose label would overlap one already placed), you, and a scale bar
+  var TOWNS = [['Reading',-0.973,51.454],['Oxford',-1.258,51.752],['Guildford',-0.57,51.236],['Luton',-0.42,51.879],
+    ['Chelmsford',0.47,51.736],['Maidstone',0.522,51.27],['Crawley',-0.187,51.109],['Southend',0.71,51.54],
+    ['Basingstoke',-1.087,51.266],['Cambridge',0.121,52.205],['Brighton',-0.137,50.822],['Canterbury',1.08,51.28],
+    ['Milton Keynes',-0.759,52.04],['Watford',-0.396,51.656],['Slough',-0.595,51.511],['High Wycombe',-0.749,51.629],
+    ['Tonbridge',0.274,51.195],['Colchester',0.902,51.889],['Margate',1.386,51.389],['Hastings',0.573,50.854],
+    ['Eastbourne',0.284,50.768],['Portsmouth',-1.091,50.805],['Southampton',-1.404,50.909],['Winchester',-1.313,51.063],
+    ['Bedford',-0.466,52.136],['Stevenage',-0.202,51.903],['Harlow',0.111,51.772],['Horsham',-0.327,51.063],
+    ['Newbury',-1.323,51.401],['Aylesbury',-0.813,51.816],['Ashford',0.872,51.146],['Ipswich',1.155,52.059]];
+  var hp = P(R.lon, R.lat), placed = [[hp[0] - 14, hp[1] - 30, 70, 44]];
+  function free(b) {
+    return b[0] > 2 && b[1] > 2 && b[0] + b[2] < W - 2 && b[1] + b[3] < H - 30 &&
+      placed.every(function (o) { return b[0] > o[0] + o[2] || b[0] + b[2] < o[0] || b[1] > o[1] + o[3] || b[1] + b[3] < o[1]; });
+  }
+  TOWNS.forEach(function (t) {
+    var p = P(t[1], t[2]), b = [p[0] - 5, p[1] - 10, 12 + t[0].length * 8.5, 20];
+    if (!free(b)) return;
+    placed.push(b);
+    el(marks, 'circle', { cx: p[0], cy: p[1], r: 3.5, fill: 'black', stroke: 'white', 'stroke-width': 1.5 });
+    el(marks, 'text', { x: p[0] + 6, y: p[1] + 5, 'class': 'town' }, t[0]);
+  });
+  el(marks, 'circle', { cx: hp[0], cy: hp[1], r: 11, fill: 'white', stroke: 'black', 'stroke-width': 3 });
+  el(marks, 'circle', { cx: hp[0], cy: hp[1], r: 4.5, fill: 'black' });
+  el(marks, 'text', { x: hp[0] + 15, y: hp[1] - 8, 'class': 'home' }, 'You');
+  var bar = 20000 / mPerPx;
+  el(marks, 'rect', { x: W - 96, y: H - 36, width: bar + 22, height: 28, fill: 'white', stroke: 'black' });
+  el(marks, 'text', { x: W - 86, y: H - 23, 'class': 'town' }, '20 km');
+  el(marks, 'line', { x1: W - 86, y1: H - 16, x2: W - 86 + bar, y2: H - 16, stroke: 'black', 'stroke-width': 3 });
+
+  if (!R.tiles) { near.textContent = 'Radar unavailable'; return; }
+  var scale = Math.pow(2, Z - RADAR_Z), size = 256 * scale, tiles = [];
+  for (var tx = Math.floor(ox / size); tx <= Math.floor((ox + W) / size); tx++)
+    for (var ty = Math.floor(oy / size); ty <= Math.floor((oy + H) / size); ty++) tiles.push([tx, ty]);
+  var ctx = canvas.getContext('2d');
+
+  // Which way is the rain moving? Compare the rain now with the radar image from about
+  // 30 minutes earlier: find the shift that lines the old rain up best with the new.
+  var CELL = 4, GW = Math.floor(W / CELL), GH = Math.floor(H / CELL);
+  function rainGrid(data, isRain) {
+    var g = new Uint8Array(GW * GH);
+    for (var y = 0; y < GH * CELL; y++) for (var x = 0; x < GW * CELL; x++)
+      if (isRain((y * W + x) * 4)) g[Math.floor(y / CELL) * GW + Math.floor(x / CELL)] = 1;
+    return g;
+  }
+  function loadTiles(c, path) {
+    return Promise.all(tiles.map(function (t) {
+      return new Promise(function (done) {
+        var img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function () { c.drawImage(img, t[0] * size - ox, t[1] * size - oy, size, size); done(true); };
+        img.onerror = function () { done(false); };
+        img.src = path + '/256/' + RADAR_Z + '/' + t[0] + '/' + t[1] + '/2/1_0.png';
+      });
+    }));
+  }
+  var oldGrid = Promise.resolve(null);
+  if (R.oldTiles && R.minutes > 0) {
+    var oc = document.createElement('canvas'); oc.width = W; oc.height = H;
+    var octx = oc.getContext('2d');
+    oldGrid = loadTiles(octx, R.oldTiles).then(function (ok) {
+      if (!ok.some(Boolean)) return null;
+      try { var d = octx.getImageData(0, 0, W, H).data; return rainGrid(d, function (i) { return d[i + 3] > 40; }); }
+      catch (e) { return null; }
+    });
+  }
+  function track(nowGrid) {
+    oldGrid.then(function (old) {
+      var move = document.getElementById('rr-move');
+      if (!old || !move) return;
+      var nOld = 0, nNow = 0, k;
+      for (k = 0; k < old.length; k++) { nOld += old[k]; nNow += nowGrid[k]; }
+      if (nOld < 40 || nNow < 40) return;                 // too little rain to tell
+      var MAX = 25, bestScore = -1, sx = 0, sy = 0;        // up to 25 cells (about 38 km) either way
+      for (var dy = -MAX; dy <= MAX; dy++) for (var dx = -MAX; dx <= MAX; dx++) {
+        var score = 0;
+        for (var y = Math.max(0, -dy); y < Math.min(GH, GH - dy); y++) {
+          var ro = y * GW, rn = (y + dy) * GW + dx;
+          for (var x = Math.max(0, -dx); x < Math.min(GW, GW - dx); x++) score += old[ro + x] & nowGrid[rn + x];
+        }
+        if (score > bestScore || (score === bestScore && dx * dx + dy * dy < sx * sx + sy * sy)) { bestScore = score; sx = dx; sy = dy; }
+      }
+      if (bestScore < 0.3 * Math.min(nOld, nNow)) return;  // no clear match
+      var kmh = Math.sqrt(sx * sx + sy * sy) * CELL * mPerPx / 1000 / (R.minutes / 60);
+      if (kmh < 5) { move.textContent = 'Rain barely moving'; return; }
+      var dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+      var ang = (Math.atan2(sx, -sy) * 180 / Math.PI + 360) % 360;
+      move.innerHTML = '<svg class="wx-arrow" viewBox="0 0 20 20" width="1em" height="1em"><g transform="rotate(' +
+        Math.round(ang) + ' 10 10)"><path d="M10 2l6 14-6-4-6 4z" fill="black"/></g></svg> Heading ' +
+        dirs[Math.round(ang / 45) % 8] + ' at ' + Math.round(kmh / 1.609) + ' mph';
+    });
+  }
+
+  loadTiles(ctx, R.tiles).then(function (loaded) {
+    if (!loaded.some(Boolean)) { near.textContent = 'Radar unavailable'; return; }
+    var img;
+    try { img = ctx.getImageData(0, 0, W, H); } catch (e) {
+      // The tiles can't be read (no CORS): show them as plain dark shapes instead.
+      canvas.style.filter = 'grayscale(1) brightness(0.6) contrast(3)';
+      near.textContent = 'Rain on the map'; return;
+    }
+    var px = img.data, best = Infinity, bx = 0, by = 0;
+    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
+      var i = (y * W + x) * 4, a = px[i + 3], level = 0;
+      if (a > 40) {
+        var r = px[i], g = px[i + 1], b = px[i + 2];
+        // RainViewer's colours: pale to deep blue as rain gets heavier, then yellow, orange and red.
+        if (r > b + 20) level = 3;
+        else level = (r + g + b) / 3 > 165 ? 1 : 2;
+      }
+      var ink = level === 3 || (level === 2 && (x % 5 < 2 || y % 5 < 2)) || (level === 1 && (x + y) % 8 < 2);
+      px[i] = px[i + 1] = px[i + 2] = ink ? 0 : 255;
+      px[i + 3] = level ? 255 : 0;  // rain areas are opaque, so their pattern reads over the sea dots
+      if (level) { var dd = (x - hp[0]) * (x - hp[0]) + (y - hp[1]) * (y - hp[1]); if (dd < best) { best = dd; bx = x; by = y; } }
+    }
+    ctx.putImageData(img, 0, 0);
+    track(rainGrid(px, function (i) { return px[i + 3] > 0; }));
+    if (best === Infinity) { near.textContent = 'No rain on the map'; return; }
+    var km = Math.sqrt(best) * mPerPx / 1000;
+    if (km < 2) { near.textContent = 'Raining here'; return; }
+    var dirs = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
+    var ang = (Math.atan2(bx - hp[0], hp[1] - by) * 180 / Math.PI + 360) % 360;
+    near.textContent = 'Rain ' + Math.round(km) + ' km ' + dirs[Math.round(ang / 45) % 8];
+  });
+});
+</script>

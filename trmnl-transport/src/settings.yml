@@ -1,0 +1,47 @@
+---
+name: Departures
+description: TfL buses and National Rail trains
+strategy: polling
+polling_verb: get
+polling_url: |-
+  https://api.tfl.gov.uk/StopPoint/{{ bus_stop_1 }}/Arrivals
+  https://api.tfl.gov.uk/StopPoint/{{ bus_stop_2 }}/Arrivals
+  https://api1.raildata.org.uk/1010-live-departure-board-dep1_2/LDBWS/api/20220120/GetDepartureBoard/{{ station_crs }}?numRows=20
+  https://api1.raildata.org.uk/1010-live-departure-board-dep1_2/LDBWS/api/20220120/GetDepartureBoard/{{ second_station_crs }}?numRows=10
+polling_headers: x-apikey={{ rail_api_key }}
+refresh_interval: 15
+no_screen_padding: 'no'
+dark_mode: 'no'
+static_data: ''
+framework_version: latest
+custom_fields:
+- keyname: bus_stop_1
+  field_type: string
+  name: First bus stop ID
+  description: TfL stop ID from the stop's tfl.gov.uk page, e.g. 490012345N. Shown first.
+  default: 490004972S
+- keyname: bus_stop_2
+  field_type: string
+  name: Second bus stop ID
+  description: TfL stop ID of a second stop, shown below the first. TfL refuses one request for several stops, so each stop has its own field.
+  default: 490004972N
+- keyname: station_crs
+  field_type: string
+  name: Main station code
+  description: Three-letter code of the station split by operator, e.g. DMK for Denmark Hill.
+  default: DMK
+- keyname: station_operators
+  field_type: string
+  name: Operators to split by
+  description: Operator names as National Rail shows them, separated by commas. Leave blank for one list.
+  default: Thameslink, London Overground, Southeastern
+  optional: true
+- keyname: second_station_crs
+  field_type: string
+  name: Second station code
+  description: Three-letter code of a second station shown as one list, e.g. EDW for East Dulwich.
+  default: EDW
+- keyname: rail_api_key
+  field_type: password
+  name: Rail Data Marketplace key
+  description: Consumer key for the Live Departure Board product at raildata.org.uk.

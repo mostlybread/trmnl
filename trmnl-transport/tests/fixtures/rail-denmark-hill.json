@@ -1,0 +1,187 @@
+{
+ "locationName": "Denmark Hill",
+ "crs": "DMK",
+ "generatedAt": "2026-10-15T12:00:02+01:00",
+ "trainServices": [
+  {
+   "std": "12:03",
+   "etd": "On time",
+   "platform": "2",
+   "operator": "London Overground",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "Dalston Junction"
+    }
+   ]
+  },
+  {
+   "std": "12:05",
+   "etd": "On time",
+   "platform": "3",
+   "operator": "Southeastern",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "London Victoria"
+    }
+   ]
+  },
+  {
+   "std": "12:06",
+   "etd": "12:09",
+   "platform": "1",
+   "operator": "London Overground",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "Clapham Junction"
+    }
+   ]
+  },
+  {
+   "std": "12:07",
+   "etd": "On time",
+   "platform": "4",
+   "operator": "Thameslink",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "Welwyn Garden City"
+    }
+   ]
+  },
+  {
+   "std": "12:09",
+   "etd": "On time",
+   "platform": "2",
+   "operator": "Southeastern",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "Dartford"
+    }
+   ]
+  },
+  {
+   "std": "12:11",
+   "etd": "On time",
+   "platform": "2",
+   "operator": "London Overground",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "Highbury & Islington"
+    }
+   ]
+  },
+  {
+   "std": "12:13",
+   "etd": "On time",
+   "platform": "3",
+   "operator": "Thameslink",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "Sevenoaks"
+    }
+   ]
+  },
+  {
+   "std": "12:15",
+   "etd": "Delayed",
+   "platform": "2",
+   "operator": "Southeastern",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "Gillingham (Kent)"
+    }
+   ]
+  },
+  {
+   "std": "12:18",
+   "etd": "On time",
+   "platform": "1",
+   "operator": "London Overground",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "Clapham Junction"
+    }
+   ]
+  },
+  {
+   "std": "12:21",
+   "etd": "On time",
+   "platform": "2",
+   "operator": "London Overground",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "Dalston Junction"
+    }
+   ]
+  },
+  {
+   "std": "12:22",
+   "etd": "On time",
+   "platform": "3",
+   "operator": "Southeastern",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "London Victoria"
+    }
+   ]
+  },
+  {
+   "std": "12:28",
+   "etd": "On time",
+   "platform": "2",
+   "operator": "Southeastern",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "Dartford"
+    }
+   ]
+  },
+  {
+   "std": "12:37",
+   "etd": "On time",
+   "platform": "4",
+   "operator": "Thameslink",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "Welwyn Garden City"
+    }
+   ]
+  },
+  {
+   "std": "12:43",
+   "etd": "On time",
+   "platform": "3",
+   "operator": "Thameslink",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "Sevenoaks"
+    }
+   ]
+  },
+  {
+   "std": "12:51",
+   "etd": "On time",
+   "platform": "4",
+   "operator": "Thameslink",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "Welwyn Garden City"
+    }
+   ]
+  }
+ ]
+}

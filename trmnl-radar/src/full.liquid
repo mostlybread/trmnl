@@ -1,0 +1,29 @@
+<div class="layout layout--row layout--left layout--stretch-y gap--large">
+  <div class="rr-map" id="rr-map"></div>
+  <div class="flex flex--col flex--left gap--medium rr-side">
+    <div class="flex flex--col flex--left gap--xsmall">
+      <span class="label label--underline">{% if radar_time %}Radar at {{ radar_time }}{% else %}Radar{% endif %}</span>
+      <span class="title" id="rr-near">Rain nearby</span>
+      <span class="label" id="rr-move"></span>
+      <span class="label">{{ rain_text }}</span>
+    </div>
+    <div class="flex flex--col flex--left gap--xsmall">
+      <div class="flex flex--row flex--left flex--center-y gap--small">
+        <span class="value value--large">{{ current.temperature_2m | round }}°</span>
+        {% render "weather_icon", code: current.weather_code, night: night, size: 64 %}
+      </div>
+      <span class="label">Feels {{ current.apparent_temperature | round }}°</span>
+      {% render "wind", speed: current.wind_speed_10m, dir: current.wind_direction_10m, gust: current.wind_gusts_10m %}
+    </div>
+    <div class="flex flex--col flex--left gap--xsmall">
+      {% render "key", level: 1, text: "Light" %}
+      {% render "key", level: 2, text: "Moderate" %}
+      {% render "key", level: 3, text: "Heavy" %}
+    </div>
+  </div>
+</div>
+
+<div class="title_bar">
+  <span class="title">Rain radar</span>
+  <span class="instance">{{ place }} · {{ today_short }}</span>
+</div>

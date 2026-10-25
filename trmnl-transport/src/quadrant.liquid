@@ -1,0 +1,11 @@
+<div class="layout layout--col layout--top layout--stretch-x gap--small">
+  <span class="label label--underline">{{ main.locationName }}</span>
+  {% render "trains", services: main.trainServices, max_trains: 3, show_plat: false %}
+  <span class="label label--underline">{{ second.locationName }}</span>
+  {% render "trains", services: second.trainServices, max_trains: 1, show_plat: false %}
+</div>
+
+<div class="title_bar">
+  <span class="title">Departures</span>
+  <span class="instance">{{ now_local }}</span>
+</div>

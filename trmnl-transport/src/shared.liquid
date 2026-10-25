@@ -1,0 +1,137 @@
+{%- comment -%}
+  Shared by every view (TRMNL puts this in front of each one).
+  Polling URLs, in order:
+    IDX_0  TfL arrivals for the first bus stop
+    IDX_1  TfL arrivals for the second bus stop (TfL answers 404 to several stops in one request)
+    IDX_2  departure board for the main station (split by operator)
+    IDX_3  departure board for the second station
+{%- endcomment -%}
+
+{%- assign settings = trmnl.plugin_settings.custom_fields_values -%}
+{%- assign utc_offset = trmnl.user.utc_offset | default: 0 -%}
+{%- assign now_s = "now" | date: "%s" | plus: 0 -%}
+{%- assign now_local = now_s | plus: utc_offset | date: "%H:%M" -%}
+
+{%- comment -%} TRMNL wraps a bare JSON array as { "data": [...] } {%- endcomment -%}
+{%- assign no_arrivals = "" | split: "," -%}
+{%- assign arrivals_1 = IDX_0.data | default: no_arrivals -%}
+{%- assign arrivals_2 = IDX_1.data | default: no_arrivals -%}
+{%- assign arrivals = arrivals_1 | concat: arrivals_2 | sort: "timeToStation" -%}
+{%- assign stop_ids = settings.bus_stop_1 | append: "," | append: settings.bus_stop_2 | remove: " " | split: "," -%}
+{%- assign main = IDX_2 -%}
+{%- assign second = IDX_3 -%}
+{%- assign operators = settings.station_operators | split: "," -%}
+
+{%- comment -%}
+  One bus stop: its name, then a row per route, "40  Aldgate / 2, 11, 23 min".
+  Args: stop_arrivals, now_s, max_routes, times_per_route, hide_under_mins (drop buses you can't make).
+{%- endcomment -%}
+{% template bus_stop %}
+{%- assign routes = stop_arrivals | map: "lineName" | uniq -%}
+{%- assign first = stop_arrivals | first -%}
+<span class="label label--underline">{{ first.stationName | default: "Bus stop" }}{% if first.platformName %} ({{ first.platformName }}){% endif %}</span>
+{%- assign shown = 0 -%}
+{%- for route in routes -%}
+  {%- if shown >= max_routes -%}{%- break -%}{%- endif -%}
+  {%- assign these = stop_arrivals | where: "lineName", route -%}
+  {%- assign n = 0 -%}
+  {%- capture times -%}
+    {%- for a in these -%}
+      {%- if n >= times_per_route -%}{%- break -%}{%- endif -%}
+      {%- assign due_s = a.expectedArrival | date: "%s" | plus: 0 -%}
+      {%- assign mins = due_s | minus: now_s | divided_by: 60 | floor -%}
+      {%- if mins >= hide_under_mins -%}
+        {%- if n > 0 %}, {% endif -%}{{ mins }}
+        {%- assign n = n | plus: 1 -%}
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endcapture -%}
+  {%- if n > 0 -%}
+    <div class="flex flex--row flex--left flex--center-y gap--small bus">
+      <span class="value value--xsmall route">{{ route }}</span>
+      <span class="title title--small stretch" data-clamp="1">{{ these[0].destinationName }}</span>
+      <span class="label one-line">{{ times }}′</span>
+    </div>
+    {%- assign shown = shown | plus: 1 -%}
+  {%- endif -%}
+{%- endfor -%}
+{%- if shown == 0 -%}
+  <span class="description">No buses due</span>
+{%- endif -%}
+{% endtemplate %}
+
+{%- comment -%}
+  Both bus stops, first then second. Args as bus_stop, plus stop_ids and arrivals.
+{%- endcomment -%}
+{% template bus_stops %}
+{%- for id in stop_ids -%}
+  {%- assign stop_arrivals = arrivals | where: "naptanId", id -%}
+  <div class="flex flex--col flex--left gap--xsmall stop">
+    {% render "bus_stop", stop_arrivals: stop_arrivals, now_s: now_s, max_routes: max_routes, times_per_route: times_per_route, hide_under_mins: hide_under_mins %}
+  </div>
+{%- endfor -%}
+{% endtemplate %}
+
+{%- comment -%}
+  Train rows. Args: services, max_trains, show_plat.
+{%- endcomment -%}
+{% template trains %}
+{%- if services and services.size > 0 -%}
+  <div class="trains">
+    {%- for t in services limit: max_trains -%}
+      {%- assign status = t.etd -%}
+      {%- if t.isCancelled or status == "Cancelled" -%}{%- assign status = "Canc" -%}
+      {%- elsif status == "Delayed" -%}{%- assign status = "Late" -%}{%- endif -%}
+      <div class="train">
+        <span class="label t-time">{{ t.std }}</span>
+        <span class="label t-dest one-line">{{ t.destination[0].locationName | remove: " (London)" | remove: " (Kent)" }}</span>
+        {%- if show_plat -%}<span class="label t-plat">{{ t.platform | default: "–" }}</span>{%- endif -%}
+        <span class="t-status">
+          {%- comment -%} Blank when on time, so problems stand out {%- endcomment -%}
+          {%- if status != "On time" -%}<span class="label label--inverted">{{ status }}</span>{%- endif -%}
+        </span>
+      </div>
+    {%- endfor -%}
+  </div>
+{%- else -%}
+  <span class="label">No departures listed</span>
+{%- endif -%}
+{% endtemplate %}
+
+{%- comment -%}
+  A station split into one block per operator (or one list if no operators are set).
+  Args: board, operators, per_operator, show_plat.
+{%- endcomment -%}
+{% template station_by_operator %}
+{%- if operators.size > 0 -%}
+  {%- for op in operators -%}
+    {%- assign op_name = op | strip -%}
+    {%- assign services = board.trainServices | where: "operator", op_name -%}
+    <div class="flex flex--col flex--left gap--xsmall">
+      <span class="label label--inverted">{{ op_name }}</span>
+      {% render "trains", services: services, max_trains: per_operator, show_plat: show_plat %}
+    </div>
+  {%- endfor -%}
+{%- else -%}
+  {% render "trains", services: board.trainServices, max_trains: per_operator, show_plat: show_plat %}
+{%- endif -%}
+{% endtemplate %}
+
+<style>
+  /* Inverted route number so it reads from across the room */
+  .route { background: black; color: white; min-width: 2.6em; padding: 0 0.2em; text-align: center; }
+  .stretch { flex: 1; min-width: 0; }
+  .stop, .bus { width: 100%; }
+  .one-line { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .trains { width: 100%; }
+  .train { display: flex; align-items: center; gap: 0.5em; padding: 0.15em 0; border-bottom: 1px dotted black; }
+  .train .t-time { flex: 0 0 auto; }
+  .train .t-dest { flex: 1; min-width: 0; }
+  .train .t-plat { flex: 0 0 1.2em; text-align: center; }
+  .train .t-status { flex: 0 0 3.3em; text-align: right; }
+  .col-buses { flex: 0 0 30%; }
+  .rail-grid > * { min-width: 0; }
+  /* Box around the second station so it reads as separate from the main one */
+  .second-station { border: 2px solid black; border-radius: 6px; padding: 0.3em 0.5em 0.4em; }
+  .second-station .train:last-child { border-bottom: none; }
+</style>

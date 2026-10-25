@@ -1,0 +1,96 @@
+{
+ "locationName": "East Dulwich",
+ "crs": "EDW",
+ "generatedAt": "2026-10-15T12:00:02+01:00",
+ "nrccMessages": [
+  {
+   "Value": "Lifts out of order at Peckham Rye."
+  }
+ ],
+ "trainServices": [
+  {
+   "std": "12:02",
+   "etd": "On time",
+   "platform": "2",
+   "operator": "Southern",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "London Bridge"
+    }
+   ]
+  },
+  {
+   "std": "12:08",
+   "etd": "On time",
+   "platform": "1",
+   "operator": "Southern",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "Sutton (London)"
+    }
+   ]
+  },
+  {
+   "std": "12:17",
+   "etd": "12:21",
+   "platform": "2",
+   "operator": "Southern",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "London Bridge"
+    }
+   ]
+  },
+  {
+   "std": "12:23",
+   "etd": "Cancelled",
+   "platform": null,
+   "operator": "Southern",
+   "isCancelled": true,
+   "destination": [
+    {
+     "locationName": "West Croydon"
+    }
+   ]
+  },
+  {
+   "std": "12:32",
+   "etd": "On time",
+   "platform": "2",
+   "operator": "Southern",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "London Bridge"
+    }
+   ]
+  },
+  {
+   "std": "12:38",
+   "etd": "On time",
+   "platform": "1",
+   "operator": "Southern",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "Sutton (London)"
+    }
+   ]
+  },
+  {
+   "std": "12:47",
+   "etd": "On time",
+   "platform": "2",
+   "operator": "Southern",
+   "isCancelled": false,
+   "destination": [
+    {
+     "locationName": "London Bridge"
+    }
+   ]
+  }
+ ]
+}

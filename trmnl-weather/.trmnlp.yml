@@ -1,0 +1,19 @@
+# Local preview settings for `trmnlp serve`. Not uploaded to TRMNL.
+---
+watch:
+  - .trmnlp.yml
+  - src
+
+time_zone: Europe/London
+
+# Your values, used only when previewing on your computer. Open-Meteo needs no key.
+custom_fields:
+  location: "51.4660,-0.0880"   # Champion Grove, SE5
+  place_name: Denmark Hill
+
+variables:
+  trmnl: {}
+
+# This is a private plugin, not a published recipe, so it needs no author contact field.
+ignored_lint_rules:
+  - author_contact_method

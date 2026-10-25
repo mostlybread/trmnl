@@ -1,0 +1,21 @@
+<div class="layout layout--row layout--left layout--stretch-y gap--large">
+  <div class="flex flex--col flex--left flex--center-y gap--small">
+    <div class="flex flex--row flex--left flex--center-y gap--small">
+      {% render "weather_icon", code: current.weather_code, night: night, size: 64 %}
+      <span class="value value--xlarge">{{ current.temperature_2m | round }}°</span>
+    </div>
+    <span class="label label--underline">{{ today }}</span>
+    <span class="title title--small">{% render "weather_words", code: current.weather_code %}</span>
+    <span class="label">Today {{ daily.temperature_2m_max[0] | round }}° / {{ daily.temperature_2m_min[0] | round }}°</span>
+    {% render "wind", speed: current.wind_speed_10m, dir: current.wind_direction_10m %}
+    <span class="label label--inverted rain-note">{{ rain_text }}</span>
+  </div>
+  <div class="chart-box">
+    {% render "rain_temp_chart", hourly: hourly, hours: 13, w: 520, h: 192, wind_every: 2 %}
+  </div>
+</div>
+
+<div class="title_bar">
+  <span class="title">Weather</span>
+  <span class="instance">{{ place }}</span>
+</div>

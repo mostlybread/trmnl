@@ -1,0 +1,280 @@
+{%- comment -%}
+  Shared by every view (TRMNL puts this in front of each one).
+  One polling URL (Open-Meteo), so its answer arrives at the top level:
+  current, hourly (24 hours from this hour), daily (today and the next two days).
+{%- endcomment -%}
+
+{%- assign settings = trmnl.plugin_settings.custom_fields_values -%}
+{%- assign place = settings.place_name | default: trmnl.plugin_settings.instance_name | default: "Weather" -%}
+{%- assign utc_offset = trmnl.user.utc_offset | default: utc_offset_seconds | default: 0 -%}
+{%- assign now_s = "now" | date: "%s" | plus: utc_offset -%}
+{%- comment -%} No clock: the screen only redraws every refresh, so a time would always be stale {%- endcomment -%}
+{%- assign today = now_s | date: "%A %-d %B" -%}
+{%- assign today_short = now_s | date: "%a %-d %b" -%}
+{%- assign night = false -%}{%- if current.is_day == 0 -%}{%- assign night = true -%}{%- endif -%}
+
+{%- comment -%}
+  When rain is due. "Wet" means at least 0.1 mm in the hour or a 50% chance.
+  Raining now: say when it should stop. Dry now: say when it should start.
+{%- endcomment -%}
+{%- assign wet_now = false -%}
+{%- assign code_now = current.weather_code | default: 0 -%}
+{%- if current.precipitation >= 0.1 -%}{%- assign wet_now = true -%}{%- endif -%}
+{%- if code_now >= 51 and code_now <= 67 -%}{%- assign wet_now = true -%}{%- endif -%}
+{%- if code_now >= 80 -%}{%- assign wet_now = true -%}{%- endif -%}
+{%- assign rain_hour = nil -%}
+{%- assign rain_chance = 0 -%}
+{%- assign last_hour = hourly.time.size | minus: 1 -%}
+{%- for i in (1..last_hour) -%}
+  {%- assign mm = hourly.precipitation[i] | default: 0 -%}
+  {%- assign pc = hourly.precipitation_probability[i] | default: 0 -%}
+  {%- assign wet = false -%}
+  {%- if mm >= 0.1 or pc >= 50 -%}{%- assign wet = true -%}{%- endif -%}
+  {%- if wet != wet_now -%}
+    {%- assign rain_hour = hourly.time[i] | slice: 11, 5 -%}
+    {%- assign rain_chance = pc -%}
+    {%- break -%}
+  {%- endif -%}
+{%- endfor -%}
+{%- if wet_now -%}
+  {%- if rain_hour -%}{%- capture rain_text -%}Raining, dry from about {{ rain_hour }}{%- endcapture -%}
+  {%- else -%}{%- assign rain_text = "Rain on and off all day" -%}{%- endif -%}
+{%- elsif rain_hour -%}
+  {%- capture rain_text -%}Rain from about {{ rain_hour }} ({{ rain_chance }}%){%- endcapture -%}
+{%- else -%}
+  {%- assign rain_text = "No rain in the next 24 hours" -%}
+{%- endif -%}
+
+{%- comment -%}
+  Weather icon drawn as SVG, so it needs no image hosting and stays sharp on e-ink.
+  Args: code (WMO weather code), night (true to show a moon), size (px).
+{%- endcomment -%}
+{% template weather_icon %}
+{%- assign k = "cloud" -%}
+{%- case code -%}
+  {%- when 0, 1 -%}{%- assign k = "sun" -%}
+  {%- when 2 -%}{%- assign k = "part" -%}
+  {%- when 3 -%}{%- assign k = "cloud" -%}
+  {%- when 45, 48 -%}{%- assign k = "fog" -%}
+  {%- when 51, 53, 55, 56, 57 -%}{%- assign k = "drizzle" -%}
+  {%- when 61, 63, 65, 66, 67 -%}{%- assign k = "rain" -%}
+  {%- when 71, 73, 75, 77, 85, 86 -%}{%- assign k = "snow" -%}
+  {%- when 80, 81, 82 -%}{%- assign k = "showers" -%}
+  {%- when 95, 96, 99 -%}{%- assign k = "storm" -%}
+{%- endcase -%}
+<svg class="wx-icon" viewBox="0 0 64 64" width="{{ size }}" height="{{ size }}" fill="white" stroke="black" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+  {%- if k == "sun" or k == "part" or k == "showers" -%}
+    {%- if k == "sun" -%}{%- assign cx = 32 -%}{%- assign cy = 32 -%}{%- assign r = 12 -%}{%- assign ray = 20 -%}
+    {%- else -%}{%- assign cx = 42 -%}{%- assign cy = 19 -%}{%- assign r = 9 -%}{%- assign ray = 15 -%}{%- endif -%}
+    {%- if night -%}
+      <path d="M{{ cx | plus: 2 }} {{ cy | minus: r | minus: 3 }} a{{ r | plus: 3 }} {{ r | plus: 3 }} 0 1 0 {{ r | plus: 5 }} {{ r | plus: 12 }} a{{ r }} {{ r }} 0 0 1 -{{ r | plus: 5 }} -{{ r | plus: 12 }}z" fill="black"/>
+    {%- else -%}
+      <g>
+        {%- for a in (0..7) -%}
+          {%- assign dx = "1,0.71,0,-0.71,-1,-0.71,0,0.71" | split: "," -%}
+          {%- assign dy = "0,0.71,1,0.71,0,-0.71,-1,-0.71" | split: "," -%}
+          {%- assign ix = dx[a] | times: 1.0 -%}{%- assign iy = dy[a] | times: 1.0 -%}
+          {%- assign inner = r | plus: 4 -%}
+          <line x1="{{ ix | times: inner | plus: cx }}" y1="{{ iy | times: inner | plus: cy }}" x2="{{ ix | times: ray | plus: cx }}" y2="{{ iy | times: ray | plus: cy }}"/>
+        {%- endfor -%}
+      </g>
+      <circle cx="{{ cx }}" cy="{{ cy }}" r="{{ r }}" fill="black"/>
+    {%- endif -%}
+  {%- endif -%}
+  {%- if k != "sun" and k != "fog" -%}
+    {%- assign lift = -8 -%}{%- assign shift = 0 -%}
+    {%- if k == "cloud" -%}{%- assign lift = 0 -%}{%- elsif k == "part" -%}{%- assign lift = 4 -%}{%- endif -%}
+    {%- if k == "part" or k == "showers" -%}{%- assign shift = -6 -%}{%- endif -%}
+    <path transform="translate({{ shift }} {{ lift }})" d="M18 50h30a10 10 0 0 0 1-20a14 14 0 0 0-27-4a12 12 0 0 0-4 24z"/>
+  {%- endif -%}
+  {%- case k -%}
+    {%- when "rain", "showers" -%}
+      <path d="M22 48l-3 9M32 48l-3 9M42 48l-3 9" stroke-width="4"/>
+    {%- when "drizzle" -%}
+      <path d="M23 50l-1 3M33 50l-1 3M43 50l-1 3M28 56l-1 3M38 56l-1 3" stroke-width="3.5"/>
+    {%- when "snow" -%}
+      <g fill="black" stroke="none"><circle cx="22" cy="51" r="2.6"/><circle cx="32" cy="55" r="2.6"/><circle cx="42" cy="51" r="2.6"/><circle cx="27" cy="59" r="2.6"/><circle cx="37" cy="59" r="2.6"/></g>
+    {%- when "storm" -%}
+      <path d="M34 40l-8 12h7l-4 10 11-14h-7l4-8z" fill="black" stroke-width="2"/>
+    {%- when "fog" -%}
+      <path d="M10 22h44M14 32h40M10 42h40M16 52h34"/>
+  {%- endcase -%}
+</svg>
+{% endtemplate %}
+
+{%- comment -%}
+  Wind: an arrow pointing the way it's blowing, speed, where it's from, and gusts if given.
+  Args: speed (mph), dir (degrees it comes from), gust (optional).
+{%- endcomment -%}
+{% template wind %}
+{%- assign dir = dir | default: 0 -%}
+{%- assign compass = "N,NE,E,SE,S,SW,W,NW" | split: "," -%}
+{%- assign idx = dir | plus: 22.5 | divided_by: 45 | floor | modulo: 8 -%}
+{%- assign toward = dir | plus: 180 | modulo: 360 -%}
+<span class="label wx-wind"><svg class="wx-arrow" viewBox="0 0 20 20" width="1em" height="1em"><g transform="rotate({{ toward }} 10 10)"><path d="M10 2l6 14-6-4-6 4z" fill="black"/></g></svg> {{ speed | round }} mph {{ compass[idx] }}{% if gust %}, gusts {{ gust | round }}{% endif %}</span>
+{% endtemplate %}
+
+{%- comment -%} A few words for a WMO weather code. Args: code. {%- endcomment -%}
+{% template weather_words %}
+{%- case code -%}
+  {%- when 0 -%}Clear
+  {%- when 1 -%}Mostly clear
+  {%- when 2 -%}Partly cloudy
+  {%- when 3 -%}Cloudy
+  {%- when 45, 48 -%}Fog
+  {%- when 51, 53, 55 -%}Drizzle
+  {%- when 56, 57 -%}Freezing drizzle
+  {%- when 61 -%}Light rain
+  {%- when 63 -%}Rain
+  {%- when 65 -%}Heavy rain
+  {%- when 66, 67 -%}Freezing rain
+  {%- when 71, 73, 75, 77 -%}Snow
+  {%- when 80 -%}Light showers
+  {%- when 81, 82 -%}Heavy showers
+  {%- when 85, 86 -%}Snow showers
+  {%- when 95 -%}Thunderstorms
+  {%- when 96, 99 -%}Thunder and hail
+  {%- else -%}–
+{%- endcase -%}
+{% endtemplate %}
+
+{%- comment -%}
+  Temperature line over expected-rain bars, one column per hour.
+  Bar height is the expected rain in mm (labelled on the bar); the chance of rain is printed under each hour.
+  The bar scale runs to 2 mm, or to the wettest hour if that's more.
+  Args: hourly, hours (columns), w and h (drawing size), label_every (optional, 2 labels every other hour),
+  wind_every (optional, wind arrow and mph every N hours; leave out for no wind row).
+{%- endcomment -%}
+{% template rain_temp_chart %}
+{%- assign last = hours | minus: 1 -%}
+{%- assign every = label_every | default: 1 -%}
+{%- assign sorted = hourly.temperature_2m | slice: 0, hours | sort -%}
+{%- assign t_min = sorted | first | floor | minus: 1 -%}
+{%- assign t_max = sorted | last | ceil | plus: 1 -%}
+{%- assign t_span = t_max | minus: t_min -%}
+{%- comment -%} At least 8 degrees of range, so a one-degree change doesn't look like a plunge {%- endcomment -%}
+{%- if t_span < 8 -%}{%- assign t_span = 8 -%}{%- endif -%}
+{%- assign top = 30 -%}
+{%- comment -%} An optional wind row (arrow and mph) goes under the chance-of-rain row {%- endcomment -%}
+{%- assign wind_every = wind_every | default: 0 -%}
+{%- if wind_every > 0 and hourly.wind_speed_10m -%}{%- assign axis = h | minus: 68 -%}{%- else -%}{%- assign wind_every = 0 -%}{%- assign axis = h | minus: 44 -%}{%- endif -%}
+{%- assign ph = axis | minus: top | times: 1.0 -%}
+{%- assign ph_half = ph | times: 0.5 -%}
+{%- comment -%}
+  The "plus: 0.001" before each divided_by keeps the division fractional: Liquid divides two
+  whole numbers to a whole number, which flattened the line on the Cloudflare server.
+{%- endcomment -%}
+{%- assign colw = w | minus: 8 | plus: 0.001 | divided_by: hours -%}
+{%- assign bar_w = colw | times: 0.6 | round: 1 -%}
+{%- assign mm_sorted = hourly.precipitation | slice: 0, hours | sort -%}
+{%- assign mm_max = mm_sorted | last | default: 0 -%}
+{%- if mm_max < 2 -%}{%- assign mm_max = 2 -%}{%- endif -%}
+{%- comment -%} Bars use up to 55% of the height, leaving the top for the temperature line {%- endcomment -%}
+{%- assign bar_room = ph | times: 0.55 -%}
+{%- capture points -%}
+  {%- for i in (0..last) -%}
+    {%- assign cx = i | plus: 0.5 | times: colw | plus: 4 | round: 1 -%}
+    {%- comment -%} Temperatures use the top half, so the line rarely crosses the bars {%- endcomment -%}
+    {%- comment -%} Plot the rounded value, so the line agrees with the labels {%- endcomment -%}
+    {%- assign ty = hourly.temperature_2m[i] | round | minus: t_min | plus: 0.001 | divided_by: t_span | times: ph | times: 0.5 | plus: ph_half -%}
+    {{ cx }},{{ axis | minus: ty | round: 1 }}{% unless forloop.last %} {% endunless %}
+  {%- endfor -%}
+{%- endcapture -%}
+<svg class="wx-chart" viewBox="0 0 {{ w }} {{ h }}" width="100%" height="100%">
+  <defs>
+    <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="6" height="6" fill="white"/><rect width="3" height="6" fill="black"/>
+    </pattern>
+  </defs>
+  {%- for i in (0..last) -%}
+    {%- assign cx = i | plus: 0.5 | times: colw | plus: 4 -%}
+    {%- assign mm = hourly.precipitation[i] | default: 0 -%}
+    {%- if mm >= 0.1 -%}
+      {%- assign bh = mm | times: bar_room | plus: 0.001 | divided_by: mm_max | round: 1 -%}
+      {%- if bh < 3 -%}{%- assign bh = 3 -%}{%- endif -%}
+      <rect x="{{ cx | minus: bar_w | plus: cx | plus: 0.001 | divided_by: 2 | round: 1 }}" y="{{ axis | minus: bh }}" width="{{ bar_w }}" height="{{ bh }}" fill="url(#hatch)" stroke="black" stroke-width="1.5"/>
+      {%- assign skip = i | modulo: every -%}
+      {%- if skip == 0 -%}
+      <text class="t-mm" x="{{ cx | round: 1 }}" y="{{ axis | minus: bh | minus: 5 }}" text-anchor="middle" stroke="white" stroke-width="4" paint-order="stroke">{{ mm | round: 1 }}</text>
+      {%- endif -%}
+    {%- endif -%}
+  {%- endfor -%}
+  <line x1="0" y1="{{ axis }}" x2="{{ w }}" y2="{{ axis }}" stroke="black" stroke-width="2"/>
+  <polyline points="{{ points }}" fill="none" stroke="white" stroke-width="10" stroke-linejoin="round"/>
+  <polyline points="{{ points }}" fill="none" stroke="black" stroke-width="4" stroke-linejoin="round"/>
+  {%- assign pts = points | split: " " -%}
+  {%- for p in pts -%}
+    {%- assign xy = p | split: "," -%}
+    {%- assign i = forloop.index0 -%}
+    <circle cx="{{ xy[0] }}" cy="{{ xy[1] }}" r="5" fill="black" stroke="white" stroke-width="2"/>
+    {%- comment -%} Narrow layouts label every other hour so the numbers don't run together {%- endcomment -%}
+    {%- assign skip = i | modulo: every -%}
+    {%- if skip == 0 -%}
+    <text class="t-temp" x="{{ xy[0] }}" y="{{ xy[1] | minus: 12 }}" text-anchor="middle" stroke="white" stroke-width="5" paint-order="stroke">{{ hourly.temperature_2m[i] | round }}°</text>
+    <text class="t-hour" x="{{ xy[0] }}" y="{{ axis | plus: 20 }}" text-anchor="middle">{% if i == 0 %}Now{% else %}{{ hourly.time[i] | slice: 11, 2 }}{% endif %}</text>
+    <text class="t-rain" x="{{ xy[0] }}" y="{{ axis | plus: 40 }}" text-anchor="middle">{{ hourly.precipitation_probability[i] | default: 0 }}%</text>
+    {%- endif -%}
+    {%- if wind_every > 0 -%}
+      {%- assign wskip = i | modulo: wind_every -%}
+      {%- if wskip == 0 -%}
+        {%- assign toward = hourly.wind_direction_10m[i] | default: 0 | plus: 180 | modulo: 360 -%}
+        <g transform="translate({{ xy[0] | minus: 10 }} {{ axis | plus: 57 }}) rotate({{ toward }})"><path d="M0 -8l6 13-6-4-6 4z" fill="black"/></g>
+        <text class="t-wind" x="{{ xy[0] | minus: 1 }}" y="{{ axis | plus: 63 }}" text-anchor="start">{{ hourly.wind_speed_10m[i] | round }}</text>
+      {%- endif -%}
+    {%- endif -%}
+  {%- endfor -%}
+</svg>
+{% endtemplate %}
+
+{%- comment -%} Key for the chart. Args: short (true to leave out "Next 12 hours"). {%- endcomment -%}
+{% template chart_key %}
+<div class="flex flex--row flex--between w--full">
+  {%- unless short -%}<span class="label">Next 12 hours</span>{%- endunless -%}
+  <span class="label wx-nowrap"><span class="wx-key wx-key--light"></span>&nbsp;rain mm&nbsp;&nbsp;&nbsp;% chance&nbsp;&nbsp;&nbsp;<svg class="wx-arrow" viewBox="0 0 20 20" width="1em" height="1em"><path d="M10 2l6 14-6-4-6 4z" fill="black" transform="rotate(45 10 10)"/></svg>&nbsp;wind mph</span>
+</div>
+{% endtemplate %}
+
+{%- comment -%}
+  One day: name, icon, high and low, words, rain, wind.
+  Args: daily, i, label, size, compact (true for short day name and no words, for narrow layouts).
+{%- endcomment -%}
+{% template day %}
+{%- assign code = daily.weather_code[i] -%}
+<div class="flex flex--row flex--left flex--center-y gap wx-day">
+  {% render "weather_icon", code: code, night: false, size: size %}
+  <div class="flex flex--col flex--left wx-day-text">
+    <div class="flex flex--row flex--left flex--bottom gap--small">
+      <span class="title title--small">{% if compact %}{{ daily.time[i] | date: "%a" }}{% elsif label %}{{ label }}{% else %}{{ daily.time[i] | date: "%A" }}{% endif %}</span>
+      <span class="value value--xsmall">{{ daily.temperature_2m_max[i] | round }}°</span><span class="label">/ {{ daily.temperature_2m_min[i] | round }}°</span>
+    </div>
+    {%- unless compact -%}<span class="label" data-clamp="1">{% render "weather_words", code: code %}</span>{%- endunless -%}
+    <span class="label">{% unless compact %}Rain {% endunless %}{{ daily.precipitation_probability_max[i] }}%{% if daily.precipitation_sum[i] >= 0.1 %} · {{ daily.precipitation_sum[i] | round: 1 }}mm{% endif %}</span>
+    {%- if daily.wind_speed_10m_max -%}
+      {% render "wind", speed: daily.wind_speed_10m_max[i], dir: daily.wind_direction_10m_dominant[i] %}
+    {%- endif -%}
+  </div>
+</div>
+{% endtemplate %}
+
+<style>
+  .wx-chart text { font-family: var(--font-small-font-family); fill: black; }
+  .wx-chart .t-temp { font-family: var(--value-font-family); font-size: 21px; font-weight: 600; }
+  .wx-chart .t-hour { font-size: 17px; }
+  .wx-chart .t-rain { font-size: 15px; }
+  .wx-chart .t-mm { font-size: 16px; }
+  .wx-chart .t-wind { font-size: 16px; }
+  .wx-icon { flex: 0 0 auto; }
+  .wx-day-text { min-width: 0; }
+  .wx-days > .wx-day + .wx-day { border-top: 2px dotted black; padding-top: 0.5em; }
+  /* The chart fills whatever room the layout leaves it */
+  .chart-box { flex: 1 1 0; min-width: 0; min-height: 0; position: relative; align-self: stretch; }
+  .chart-box > svg { position: absolute; inset: 0; }
+  .wx-bottom { min-height: 0; }
+  .wx-main { min-width: 0; min-height: 0; }
+  .wx-days { border-left: 2px dotted black; padding-left: 1em; }
+  .wx-nowrap { white-space: nowrap; }
+  .wx-arrow { vertical-align: -0.15em; }
+  .rain-note { white-space: nowrap; align-self: flex-start; }
+  .wx-key { display: inline-block; width: 0.9em; height: 0.9em; border: 1.5px solid black; vertical-align: -0.1em; }
+  .wx-key--light { background: repeating-linear-gradient(45deg, black 0 2px, white 2px 4px); }
+</style>

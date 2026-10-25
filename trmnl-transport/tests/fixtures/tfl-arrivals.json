@@ -1,0 +1,182 @@
+[
+ {
+  "naptanId": "490004972S",
+  "stationName": "Champion Grove",
+  "platformName": "E",
+  "lineName": "40",
+  "destinationName": "Dulwich Library",
+  "timeToStation": 140,
+  "expectedArrival": "2026-10-15T11:02:20Z"
+ },
+ {
+  "naptanId": "490004972S",
+  "stationName": "Champion Grove",
+  "platformName": "E",
+  "lineName": "40",
+  "destinationName": "Dulwich Library",
+  "timeToStation": 800,
+  "expectedArrival": "2026-10-15T11:13:20Z"
+ },
+ {
+  "naptanId": "490004972S",
+  "stationName": "Champion Grove",
+  "platformName": "E",
+  "lineName": "40",
+  "destinationName": "Dulwich Library",
+  "timeToStation": 1520,
+  "expectedArrival": "2026-10-15T11:25:20Z"
+ },
+ {
+  "naptanId": "490004972S",
+  "stationName": "Champion Grove",
+  "platformName": "E",
+  "lineName": "176",
+  "destinationName": "Penge",
+  "timeToStation": 320,
+  "expectedArrival": "2026-10-15T11:05:20Z"
+ },
+ {
+  "naptanId": "490004972S",
+  "stationName": "Champion Grove",
+  "platformName": "E",
+  "lineName": "176",
+  "destinationName": "Penge",
+  "timeToStation": 1040,
+  "expectedArrival": "2026-10-15T11:17:20Z"
+ },
+ {
+  "naptanId": "490004972S",
+  "stationName": "Champion Grove",
+  "platformName": "E",
+  "lineName": "185",
+  "destinationName": "Lewisham",
+  "timeToStation": 440,
+  "expectedArrival": "2026-10-15T11:07:20Z"
+ },
+ {
+  "naptanId": "490004972S",
+  "stationName": "Champion Grove",
+  "platformName": "E",
+  "lineName": "185",
+  "destinationName": "Lewisham",
+  "timeToStation": 920,
+  "expectedArrival": "2026-10-15T11:15:20Z"
+ },
+ {
+  "naptanId": "490004972S",
+  "stationName": "Champion Grove",
+  "platformName": "E",
+  "lineName": "185",
+  "destinationName": "Lewisham",
+  "timeToStation": 1700,
+  "expectedArrival": "2026-10-15T11:28:20Z"
+ },
+ {
+  "naptanId": "490004972S",
+  "stationName": "Champion Grove",
+  "platformName": "E",
+  "lineName": "484",
+  "destinationName": "Lewisham",
+  "timeToStation": 620,
+  "expectedArrival": "2026-10-15T11:10:20Z"
+ },
+ {
+  "naptanId": "490004972S",
+  "stationName": "Champion Grove",
+  "platformName": "E",
+  "lineName": "484",
+  "destinationName": "Lewisham",
+  "timeToStation": 1880,
+  "expectedArrival": "2026-10-15T11:31:20Z"
+ },
+ {
+  "naptanId": "490004972N",
+  "stationName": "Champion Grove",
+  "platformName": "H",
+  "lineName": "40",
+  "destinationName": "Clerkenwell Green",
+  "timeToStation": 200,
+  "expectedArrival": "2026-10-15T11:03:20Z"
+ },
+ {
+  "naptanId": "490004972N",
+  "stationName": "Champion Grove",
+  "platformName": "H",
+  "lineName": "40",
+  "destinationName": "Clerkenwell Green",
+  "timeToStation": 980,
+  "expectedArrival": "2026-10-15T11:16:20Z"
+ },
+ {
+  "naptanId": "490004972N",
+  "stationName": "Champion Grove",
+  "platformName": "H",
+  "lineName": "176",
+  "destinationName": "Tottenham Court Road",
+  "timeToStation": 80,
+  "expectedArrival": "2026-10-15T11:01:20Z"
+ },
+ {
+  "naptanId": "490004972N",
+  "stationName": "Champion Grove",
+  "platformName": "H",
+  "lineName": "176",
+  "destinationName": "Tottenham Court Road",
+  "timeToStation": 560,
+  "expectedArrival": "2026-10-15T11:09:20Z"
+ },
+ {
+  "naptanId": "490004972N",
+  "stationName": "Champion Grove",
+  "platformName": "H",
+  "lineName": "176",
+  "destinationName": "Tottenham Court Road",
+  "timeToStation": 1280,
+  "expectedArrival": "2026-10-15T11:21:20Z"
+ },
+ {
+  "naptanId": "490004972N",
+  "stationName": "Champion Grove",
+  "platformName": "H",
+  "lineName": "185",
+  "destinationName": "Victoria",
+  "timeToStation": 260,
+  "expectedArrival": "2026-10-15T11:04:20Z"
+ },
+ {
+  "naptanId": "490004972N",
+  "stationName": "Champion Grove",
+  "platformName": "H",
+  "lineName": "185",
+  "destinationName": "Victoria",
+  "timeToStation": 740,
+  "expectedArrival": "2026-10-15T11:12:20Z"
+ },
+ {
+  "naptanId": "490004972N",
+  "stationName": "Champion Grove",
+  "platformName": "H",
+  "lineName": "185",
+  "destinationName": "Victoria",
+  "timeToStation": 1460,
+  "expectedArrival": "2026-10-15T11:24:20Z"
+ },
+ {
+  "naptanId": "490004972N",
+  "stationName": "Champion Grove",
+  "platformName": "H",
+  "lineName": "484",
+  "destinationName": "Camberwell Green",
+  "timeToStation": 680,
+  "expectedArrival": "2026-10-15T11:11:20Z"
+ },
+ {
+  "naptanId": "490004972N",
+  "stationName": "Champion Grove",
+  "platformName": "H",
+  "lineName": "484",
+  "destinationName": "Camberwell Green",
+  "timeToStation": 1760,
+  "expectedArrival": "2026-10-15T11:29:20Z"
+ }
+]
