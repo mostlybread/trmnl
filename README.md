@@ -12,3 +12,7 @@ A TRMNL e-ink screen run from my own Cloudflare Worker: weather all the time, a 
 The server builds the three plugins into one file, `trmnl-server/dist/worker.js`. Cloudflare rebuilds and deploys it on every push to `main`, so there's nothing to paste.
 
 **Keys stay out of this repository.** The rail and TfL keys live in the Worker's secrets in Cloudflare. `trmnl-transport/.trmnlp.yml` has a placeholder for local previews only; don't commit a real key there.
+
+## Deploying
+
+Cloudflare's Workers Builds is connected to this repository: build command `npm run build`, deploy command `npx wrangler deploy`, root directory blank. Each push to `main` shows up under the Worker's **Deployments**, and as a check on the commit here.
