@@ -25,10 +25,10 @@ You'll need: your Cloudflare account, the rail key and TfL key you already use f
 
 1. In Cloudflare, open the `trmnl` Worker (or **Workers & Pages → Create → Import a repository** for a new one).
 2. Go to **Settings → Build → Connect**, pick GitHub and the `mostlybread/trmnl` repository, branch `main`.
-3. Set **Root directory** to `trmnl-server`, **Build command** to `npm install && npm run build`, and leave **Deploy command** as `npx wrangler deploy`.
+3. Set **Build command** to `npm run build` and leave **Deploy command** as `npx wrangler deploy`. Leave the root directory blank.
 4. Save. The first build starts straight away; its log is under **Deployments**.
 
-`wrangler.toml` names the Worker `trmnl`, so it must match the Worker's name in Cloudflare. Your secrets and variables are kept.
+`wrangler.toml` at the top of the repository names the Worker `trmnl`, so it must match the Worker's name in Cloudflare. Your secrets and variables are kept.
 
 **By hand:** go to **Workers & Pages → Create → Create Worker**, call it `trmnl` and click **Deploy**. Click **Edit code**, delete what's there, paste the whole of [`dist/worker.js`](dist/worker.js), and click **Deploy**.
 
@@ -128,7 +128,6 @@ After changing a plugin's `.liquid` files, push to `main` and Cloudflare rebuild
 | File | What it is |
 |---|---|
 | `dist/worker.js` | The finished Worker. Cloudflare builds its own copy from GitHub; this one is for pasting by hand. |
-| `wrangler.toml` | Tells Cloudflare's GitHub builds the Worker's name and which file to deploy. |
 | `src/worker.js` | Answers the TRMNL: picks the screen from why it woke, and draws images. |
 | `src/screens.js` | Fetches each plugin's data, runs its Liquid templates and builds the page. |
 | `src/images/` | The "Connected" and "Screen not drawn" images. |

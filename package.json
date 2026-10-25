@@ -1,0 +1,7 @@
+{
+  "name": "trmnl",
+  "private": true,
+  "scripts": {
+    "build": "cd trmnl-server && npm install && npm run build"
+  }
+}
