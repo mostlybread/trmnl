@@ -10,7 +10,7 @@ A full-screen rain radar map for Champion Grove, SE5 (Denmark Hill), with how fa
 
 - **Map.** About 210 km by 150 km of South East England, centred on you. Land and sea are plain white with a bold coastline, and a few towns are labelled so you can tell where the rain is. A 20 km scale bar sits in the corner.
 - **Rain.** The latest radar picture from [RainViewer](https://www.rainviewer.com) (free, no key), in three patterns: fine dots for light, a grid for moderate, solid black for heavy.
-- **Side panel.** The radar's time, when the rain should reach you ("Rain in 40 min", or "Rain by 19:00" when it's over an hour away), where it is now ("Now 28 km west"), which way it's heading and how fast ("Heading NE at 14 mph", or "Not heading this way"), the forecast's next start or stop time, temperature with a weather icon, feels-like, and wind with gusts from [Open-Meteo](https://open-meteo.com).
+- **Side panel.** The radar's time, when the rain should reach you ("Rain in 40 min", or "Rain by 19:00" when it's over an hour away), where it is now ("Now 28 km west"), which way it's heading and how fast ("Heading NE at 14 mph", or "Not heading this way"), the forecast's next start or stop time, temperature with a weather icon, a one-line summary as on the weather screen ("Mild and windy, rain from 4pm"), feels-like, and wind with gusts from [Open-Meteo](https://open-meteo.com).
 - **Rain movement.** Worked out by comparing the newest radar picture with one from about 30 minutes earlier and finding the shift that lines them up best. The arrival time assumes it keeps going the same way at the same speed, up to 3 hours ahead. It's left off when there's too little rain on the map to tell, and says "Rain barely moving" below 3 mph.
 
 ## How it's used
