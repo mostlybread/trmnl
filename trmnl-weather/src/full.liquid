@@ -11,7 +11,7 @@
         <span class="label">Today {{ daily.temperature_2m_max[0] | round }}° / {{ daily.temperature_2m_min[0] | round }}°</span>
       </div>
     </div>
-    <span class="label label--inverted rain-note">{{ rain_text }}</span>
+    <span class="label label--inverted rain-note">{{ summary }}</span>
     {% render "chart_key" %}
     <div class="chart-box">
       {% render "rain_temp_chart", hourly: hourly, hours: 13, w: 540, h: 222, wind_every: 2 %}

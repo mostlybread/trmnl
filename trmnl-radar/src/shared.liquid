@@ -28,13 +28,14 @@
 {%- if code_now >= 51 and code_now <= 67 -%}{%- assign wet_now = true -%}{%- endif -%}
 {%- if code_now >= 80 -%}{%- assign wet_now = true -%}{%- endif -%}
 {%- assign rain_hour = nil -%}
+{%- assign rain_chance = 0 -%}
 {%- assign last_hour = hourly.time.size | minus: 1 -%}
 {%- for i in (1..last_hour) -%}
   {%- assign mm = hourly.precipitation[i] | default: 0 -%}
   {%- assign pc = hourly.precipitation_probability[i] | default: 0 -%}
   {%- assign wet = false -%}
   {%- if mm >= 0.1 or pc >= 50 -%}{%- assign wet = true -%}{%- endif -%}
-  {%- if wet != wet_now -%}{%- assign rain_hour = hourly.time[i] | slice: 11, 5 -%}{%- break -%}{%- endif -%}
+  {%- if wet != wet_now -%}{%- assign rain_hour = hourly.time[i] | slice: 11, 5 -%}{%- assign rain_chance = pc -%}{%- break -%}{%- endif -%}
 {%- endfor -%}
 {%- if wet_now -%}
   {%- if rain_hour -%}{%- capture rain_text -%}Forecast: dry from about {{ rain_hour }}{%- endcapture -%}
@@ -44,6 +45,57 @@
 {%- else -%}
   {%- assign rain_text = "Forecast: dry for the next 12 hours" -%}
 {%- endif -%}
+
+{%- comment -%}
+  A one-line summary of the next 12 hours, e.g. "Mild and windy, rain from 4pm (60%)":
+  how warm it gets, how windy, then when rain starts or stops (or the sky, if dry).
+{%- endcomment -%}
+{%- assign win = 12 -%}{%- if win > last_hour -%}{%- assign win = last_hour -%}{%- endif -%}
+{%- assign t_hi = hourly.temperature_2m[0] | default: current.temperature_2m | round -%}
+{%- assign w_hi = current.wind_speed_10m | default: 0 -%}
+{%- assign n_sun = 0 -%}{%- assign n_part = 0 -%}{%- assign n_cloud = 0 -%}{%- assign n_fog = 0 -%}
+{%- for i in (0..win) -%}
+  {%- assign t = hourly.temperature_2m[i] | default: t_hi | round -%}
+  {%- if t > t_hi -%}{%- assign t_hi = t -%}{%- endif -%}
+  {%- assign w = hourly.wind_speed_10m[i] | default: 0 -%}
+  {%- if w > w_hi -%}{%- assign w_hi = w -%}{%- endif -%}
+  {%- assign c = hourly.weather_code[i] | default: code_now -%}
+  {%- if c <= 1 -%}{%- assign n_sun = n_sun | plus: 1 -%}
+  {%- elsif c == 2 -%}{%- assign n_part = n_part | plus: 1 -%}
+  {%- elsif c == 45 or c == 48 -%}{%- assign n_fog = n_fog | plus: 1 -%}
+  {%- else -%}{%- assign n_cloud = n_cloud | plus: 1 -%}{%- endif -%}
+{%- endfor -%}
+{%- if t_hi <= 3 -%}{%- assign feel = "Very cold" -%}
+{%- elsif t_hi <= 8 -%}{%- assign feel = "Cold" -%}
+{%- elsif t_hi <= 12 -%}{%- assign feel = "Cool" -%}
+{%- elsif t_hi <= 18 -%}{%- assign feel = "Mild" -%}
+{%- elsif t_hi <= 23 -%}{%- assign feel = "Warm" -%}
+{%- elsif t_hi <= 28 -%}{%- assign feel = "Very warm" -%}
+{%- else -%}{%- assign feel = "Hot" -%}{%- endif -%}
+{%- assign windy = "" -%}
+{%- if w_hi >= 25 -%}{%- assign windy = " and very windy" -%}
+{%- elsif w_hi >= 17 -%}{%- assign windy = " and windy" -%}
+{%- elsif w_hi >= 11 -%}{%- assign windy = " and breezy" -%}{%- endif -%}
+{%- if rain_hour -%}
+  {%- assign rh = rain_hour | slice: 0, 2 | plus: 0 -%}
+  {%- if rh == 0 -%}{%- assign rain_at = "midnight" -%}
+  {%- elsif rh == 12 -%}{%- assign rain_at = "midday" -%}
+  {%- elsif rh > 12 -%}{%- capture rain_at -%}{{ rh | minus: 12 }}pm{%- endcapture -%}
+  {%- else -%}{%- capture rain_at -%}{{ rh }}am{%- endcapture -%}{%- endif -%}
+{%- endif -%}
+{%- if wet_now and rain_hour -%}{%- capture clause -%}rain until {{ rain_at }}{%- endcapture -%}
+{%- elsif wet_now -%}{%- assign clause = "rain on and off" -%}
+{%- elsif rain_hour -%}{%- capture clause -%}rain from {{ rain_at }}{% if rain_chance > 0 %} ({{ rain_chance }}%){% endif %}{%- endcapture -%}
+{%- else -%}
+  {%- assign sky = "cloudy" -%}{%- assign most = n_cloud -%}
+  {%- if n_part > most -%}{%- assign sky = "sunny spells" -%}{%- assign most = n_part -%}{%- endif -%}
+  {%- if n_sun > most -%}{%- assign sky = "sunny" -%}{%- assign most = n_sun -%}{%- endif -%}
+  {%- if n_fog > most -%}{%- assign sky = "foggy" -%}{%- endif -%}
+  {%- if night and sky == "sunny" -%}{%- assign sky = "clear" -%}{%- endif -%}
+  {%- if night and sky == "sunny spells" -%}{%- assign sky = "partly cloudy" -%}{%- endif -%}
+  {%- capture clause -%}{{ sky }} and dry{%- endcapture -%}
+{%- endif -%}
+{%- capture summary -%}{{ feel }}{{ windy }}, {{ clause }}{%- endcapture -%}
 
 {%- comment -%} Wind: arrow pointing the way it blows, speed, where it's from, gusts. Args: speed, dir, gust. {%- endcomment -%}
 {% template wind %}

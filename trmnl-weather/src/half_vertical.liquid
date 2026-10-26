@@ -9,7 +9,7 @@
       {% render "wind", speed: current.wind_speed_10m, dir: current.wind_direction_10m %}
     </div>
   </div>
-  <span class="label label--inverted rain-note">{{ rain_text }}</span>
+  <span class="label label--inverted rain-note">{{ summary }}</span>
   {% render "chart_key", short: true %}
   <div class="chart-box">
     {% render "rain_temp_chart", hourly: hourly, hours: 13, w: 380, h: 157, label_every: 2, wind_every: 4 %}
