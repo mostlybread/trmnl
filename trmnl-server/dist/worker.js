@@ -348,18 +348,6 @@ From `+this.originalError.stack)}static is(e){return e?.[Yt]==="LiquidError"}},A
 {%- if mm_max < 2 -%}{%- assign mm_max = 2 -%}{%- endif -%}
 {%- comment -%} Bars use up to 55% of the height, leaving the top for the temperature line {%- endcomment -%}
 {%- assign bar_room = ph | times: 0.55 -%}
-{%- comment -%}
-  Temperature labels: the warmest and coolest hour, now, and every third hour
-  (every fourth on narrow layouts) unless that sits next to the warmest or coolest.
-{%- endcomment -%}
-{%- assign hi_i = 0 -%}{%- assign lo_i = 0 -%}
-{%- assign hi_t = hourly.temperature_2m[0] | round -%}{%- assign lo_t = hi_t -%}
-{%- for i in (1..last) -%}
-  {%- assign t = hourly.temperature_2m[i] | round -%}
-  {%- if t > hi_t -%}{%- assign hi_t = t -%}{%- assign hi_i = i -%}{%- endif -%}
-  {%- if t < lo_t -%}{%- assign lo_t = t -%}{%- assign lo_i = i -%}{%- endif -%}
-{%- endfor -%}
-{%- if every > 1 -%}{%- assign t_every = every | times: 2 -%}{%- else -%}{%- assign t_every = 3 -%}{%- endif -%}
 {%- capture points -%}
   {%- for i in (0..last) -%}
     {%- assign cx = i | plus: 0.5 | times: colw | plus: 4 | round: 1 -%}
@@ -412,19 +400,14 @@ From `+this.originalError.stack)}static is(e){return e?.[Yt]==="LiquidError"}},A
   {%- for p in pts -%}
     {%- assign xy = p | split: "," -%}
     {%- assign i = forloop.index0 -%}
-    {%- assign show_t = false -%}
-    {%- assign tskip = i | modulo: t_every -%}
-    {%- assign d_hi = i | minus: hi_i | abs -%}{%- assign d_lo = i | minus: lo_i | abs -%}
-    {%- if tskip == 0 and d_hi > 1 and d_lo > 1 -%}{%- assign show_t = true -%}{%- endif -%}
-    {%- if i == 0 or i == hi_i or i == lo_i -%}{%- assign show_t = true -%}{%- endif -%}
-    {%- if show_t -%}
-    <circle cx="{{ xy[0] }}" cy="{{ xy[1] }}" r="5.5" fill="black" stroke="white" stroke-width="2"/>
-    <text class="t-temp" x="{{ xy[0] }}" y="{{ xy[1] | minus: 13 }}" text-anchor="middle" stroke="white" stroke-width="6" paint-order="stroke">{{ hourly.temperature_2m[i] | round }}\xB0</text>
-    {%- endif -%}
     {%- comment -%} Narrow layouts label every other hour so the numbers don't run together {%- endcomment -%}
     {%- assign skip = i | modulo: every -%}
     {%- if skip == 0 -%}
-    <text class="t-hour" x="{{ xy[0] }}" y="{{ axis | plus: 20 }}" text-anchor="middle">{% if i == 0 %}Now{% else %}{{ hourly.time[i] | slice: 11, 2 }}{% endif %}</text>
+    <circle cx="{{ xy[0] }}" cy="{{ xy[1] }}" r="5.5" fill="black" stroke="white" stroke-width="2"/>
+    <text class="t-temp" x="{{ xy[0] }}" y="{{ xy[1] | minus: 13 }}" text-anchor="middle" stroke="white" stroke-width="6" paint-order="stroke">{{ hourly.temperature_2m[i] | round }}\xB0</text>
+    {%- endif -%}
+    {%- if skip == 0 -%}
+    <text class="t-hour" x="{{ xy[0] }}" y="{{ axis | plus: 21 }}" text-anchor="middle">{% if i == 0 %}Now{% else %}{{ hourly.time[i] | slice: 11, 2 }}{% endif %}</text>
     <text class="t-rain" x="{{ xy[0] }}" y="{{ axis | plus: 40 }}" text-anchor="middle">{{ hourly.precipitation_probability[i] | default: 0 }}%</text>
     {%- endif -%}
     {%- if wind_every > 0 -%}
@@ -472,7 +455,7 @@ From `+this.originalError.stack)}static is(e){return e?.[Yt]==="LiquidError"}},A
 <style>
   .wx-chart text { font-family: var(--font-small-font-family); fill: black; }
   .wx-chart .t-temp { font-family: var(--value-font-family); font-size: 21px; font-weight: 600; }
-  .wx-chart .t-hour { font-size: 17px; }
+  .wx-chart .t-hour { font-family: var(--value-font-family); font-size: 19px; font-weight: 700; }
   .wx-chart .t-rain { font-size: 15px; }
   .wx-chart .t-mm { font-size: 16px; }
   .wx-chart .t-wind { font-size: 16px; }
