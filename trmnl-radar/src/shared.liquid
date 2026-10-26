@@ -124,7 +124,7 @@
   .rr-map .home { font-size: 20px; font-weight: 700; }
   .rr-side { min-width: 0; }
   .rr-key { display: inline-block; width: 30px; height: 20px; border: 1.5px solid black; }
-  .rr-key--1 { background: repeating-linear-gradient(45deg, black 0 2px, white 2px 6px); }
+  .rr-key--1 { background: radial-gradient(black 0.8px, transparent 1.1px) 0 0 / 3px 3px, white; }
   .rr-key--2 { background: repeating-linear-gradient(0deg, black 0 2px, transparent 2px 5px), repeating-linear-gradient(90deg, black 0 2px, white 2px 5px); }
   .rr-key--3 { background: black; }
   .wx-arrow { vertical-align: -0.15em; }
@@ -135,6 +135,7 @@
   // Everything the map needs from the data, filled in by Liquid.
   window.RADAR = {
     lat: {{ loc[0] | strip | default: 51.466 }}, lon: {{ loc[1] | strip | default: -0.088 }},
+    time: {% if frame %}{{ frame.time | plus: utc_offset }}{% else %}0{% endif %},
     tiles: {% if frame %}"{{ IDX_0.host }}{{ frame.path }}"{% else %}null{% endif %},
     oldTiles: {% if old_frame and old_frame.time != frame.time %}"{{ IDX_0.host }}{{ old_frame.path }}"{% else %}null{% endif %},
     minutes: {% if old_frame %}{{ frame.time | minus: old_frame.time | divided_by: 60 }}{% else %}0{% endif %}
@@ -162,18 +163,14 @@ document.addEventListener('DOMContentLoaded', function () {
     parent.appendChild(e); return e;
   }
 
-  // 1. Sea (dotted) and land (white)
+  // 1. Sea and land, both plain white with a bold coastline, so the rain stands out
   var base = svg('rr-base');
-  var defs = el(base, 'defs', {});
-  var sea = el(defs, 'pattern', { id: 'rr-sea', width: 6, height: 6, patternUnits: 'userSpaceOnUse' });
-  el(sea, 'rect', { width: 6, height: 6, fill: 'white' });
-  el(sea, 'circle', { cx: 3, cy: 3, r: 0.9, fill: 'black' });
-  el(base, 'rect', { width: W, height: H, fill: 'url(#rr-sea)' });
+  el(base, 'rect', { width: W, height: H, fill: 'white' });
   var land = JSON.parse(document.getElementById('rr-land').textContent), d = '';
   land.forEach(function (ring) {
     d += 'M' + ring.map(function (p) { var q = P(p[0], p[1]); return q[0].toFixed(1) + ' ' + q[1].toFixed(1); }).join('L') + 'Z';
   });
-  el(base, 'path', { d: d, fill: 'white', stroke: 'black', 'stroke-width': 1.5 });
+  el(base, 'path', { d: d, fill: 'white', stroke: 'black', 'stroke-width': 2.5, 'stroke-linejoin': 'round' });
 
   // 2. Rain, as patterns: light = stripes, moderate = grid, heavy = solid
   var canvas = document.createElement('canvas');
@@ -246,13 +243,13 @@ document.addEventListener('DOMContentLoaded', function () {
       catch (e) { return null; }
     });
   }
+  // Resolves to the rain's movement { sx, sy, kmh } in grid cells over R.minutes, or null.
   function track(nowGrid) {
-    oldGrid.then(function (old) {
-      var move = document.getElementById('rr-move');
-      if (!old || !move) return;
+    return oldGrid.then(function (old) {
+      if (!old) return null;
       var nOld = 0, nNow = 0, k;
       for (k = 0; k < old.length; k++) { nOld += old[k]; nNow += nowGrid[k]; }
-      if (nOld < 40 || nNow < 40) return;                 // too little rain to tell
+      if (nOld < 40 || nNow < 40) return null;            // too little rain to tell
       var MAX = 25, bestScore = -1, sx = 0, sy = 0;        // up to 25 cells (about 38 km) either way
       for (var dy = -MAX; dy <= MAX; dy++) for (var dx = -MAX; dx <= MAX; dx++) {
         var score = 0;
@@ -262,15 +259,33 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (score > bestScore || (score === bestScore && dx * dx + dy * dy < sx * sx + sy * sy)) { bestScore = score; sx = dx; sy = dy; }
       }
-      if (bestScore < 0.3 * Math.min(nOld, nNow)) return;  // no clear match
-      var kmh = Math.sqrt(sx * sx + sy * sy) * CELL * mPerPx / 1000 / (R.minutes / 60);
-      if (kmh < 5) { move.textContent = 'Rain barely moving'; return; }
-      var dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-      var ang = (Math.atan2(sx, -sy) * 180 / Math.PI + 360) % 360;
-      move.innerHTML = '<svg class="wx-arrow" viewBox="0 0 20 20" width="1em" height="1em"><g transform="rotate(' +
-        Math.round(ang) + ' 10 10)"><path d="M10 2l6 14-6-4-6 4z" fill="black"/></g></svg> Heading ' +
-        dirs[Math.round(ang / 45) % 8] + ' at ' + Math.round(kmh / 1.609) + ' mph';
+      if (bestScore < 0.3 * Math.min(nOld, nNow)) return null;  // no clear match
+      return { sx: sx, sy: sy, kmh: Math.sqrt(sx * sx + sy * sy) * CELL * mPerPx / 1000 / (R.minutes / 60) };
     });
+  }
+  // Minutes until the rain reaches you if it keeps going the same way (up to 3 hours), or null.
+  function arrival(grid, m) {
+    var hx = hp[0] / CELL, hy = hp[1] / CELL, vx = m.sx / R.minutes, vy = m.sy / R.minutes;
+    for (var t = 5; t <= 180; t += 5) {
+      var cx = Math.round(hx - vx * t), cy = Math.round(hy - vy * t);
+      if (cx < 0 || cy < 0 || cx >= GW || cy >= GH) return null;   // would come from off the map
+      for (var y = cy - 1; y <= cy + 1; y++) for (var x = cx - 1; x <= cx + 1; x++)
+        if (x >= 0 && y >= 0 && x < GW && y < GH && grid[y * GW + x]) return t;
+    }
+    return null;
+  }
+  // "in 40 min" within the hour, otherwise a clock time to the nearest 10 minutes, e.g. "by 19:00".
+  function inTime(t) {
+    if (t < 60 || !R.time) return 'in ' + t + ' min';
+    var at = new Date(Math.round((R.time + t * 60) / 600) * 600000);
+    return 'by ' + String(at.getUTCHours()).padStart(2, '0') + ':' + String(at.getUTCMinutes()).padStart(2, '0');
+  }
+  function heading(m) {
+    var short = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    var ang = (Math.atan2(m.sx, -m.sy) * 180 / Math.PI + 360) % 360;
+    return '<svg class="wx-arrow" viewBox="0 0 20 20" width="1em" height="1em"><g transform="rotate(' +
+      Math.round(ang) + ' 10 10)"><path d="M10 2l6 14-6-4-6 4z" fill="black"/></g></svg> Heading ' +
+      short[Math.round(ang / 45) % 8] + ' at ' + Math.round(m.kmh / 1.609) + ' mph';
   }
 
   loadTiles(ctx, R.tiles).then(function (loaded) {
@@ -290,19 +305,28 @@ document.addEventListener('DOMContentLoaded', function () {
         if (r > b + 20) level = 3;
         else level = (r + g + b) / 3 > 165 ? 1 : 2;
       }
-      var ink = level === 3 || (level === 2 && (x % 5 < 2 || y % 5 < 2)) || (level === 1 && (x + y) % 8 < 2);
+      var ink = level === 3 || (level === 2 && (x % 5 < 2 || y % 5 < 2)) || (level === 1 && x % 3 === 0 && (y + (x % 6 ? 0 : 1)) % 3 === 0);
       px[i] = px[i + 1] = px[i + 2] = ink ? 0 : 255;
-      px[i + 3] = level ? 255 : 0;  // rain areas are opaque, so their pattern reads over the sea dots
+      px[i + 3] = level ? 255 : 0;  // rain areas are opaque, so their pattern hides the coastline under them
       if (level) { var dd = (x - hp[0]) * (x - hp[0]) + (y - hp[1]) * (y - hp[1]); if (dd < best) { best = dd; bx = x; by = y; } }
     }
     ctx.putImageData(img, 0, 0);
-    track(rainGrid(px, function (i) { return px[i + 3] > 0; }));
     if (best === Infinity) { near.textContent = 'No rain on the map'; return; }
     var km = Math.sqrt(best) * mPerPx / 1000;
-    if (km < 2) { near.textContent = 'Raining here'; return; }
     var dirs = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
     var ang = (Math.atan2(bx - hp[0], hp[1] - by) * 180 / Math.PI + 360) % 360;
-    near.textContent = 'Rain ' + Math.round(km) + ' km ' + dirs[Math.round(ang / 45) % 8];
+    var where = Math.round(km) + ' km ' + dirs[Math.round(ang / 45) % 8];
+    near.textContent = km < 2 ? 'Raining here' : 'Rain ' + where;
+    var grid = rainGrid(px, function (i) { return px[i + 3] > 0; });
+    track(grid).then(function (m) {
+      var move = document.getElementById('rr-move'), move2 = document.getElementById('rr-move2');
+      if (!m || !move || !move2) return;
+      if (m.kmh < 5) { move.textContent = 'Rain barely moving'; return; }
+      if (km < 2) { move.innerHTML = heading(m); return; }
+      var t = arrival(grid, m);
+      if (t) { near.textContent = 'Rain ' + inTime(t); move.textContent = 'Now ' + where; move2.innerHTML = heading(m); }
+      else { move.innerHTML = heading(m); move2.textContent = 'Not heading this way'; }
+    });
   });
 });
 </script>
