@@ -7,9 +7,10 @@ A TRMNL e-ink screen run from my own Cloudflare Worker: weather all the time, a 
 | [`trmnl-server`](trmnl-server) | The Cloudflare Worker the TRMNL talks to. Picks the screen and draws it. |
 | [`trmnl-weather`](trmnl-weather) | Weather screen (Open-Meteo). |
 | [`trmnl-radar`](trmnl-radar) | Rain radar screen (RainViewer and Open-Meteo). |
+| [`trmnl-forecast`](trmnl-forecast) | The day's weather written out under a large date (Open-Meteo). |
 | [`trmnl-transport`](trmnl-transport) | Bus and train departures (TfL and National Rail). |
 
-The server builds the three plugins into one file, `trmnl-server/dist/worker.js`. Cloudflare rebuilds and deploys it on every push to `main`, so there's nothing to paste.
+The server builds the four plugins into one file, `trmnl-server/dist/worker.js`. Cloudflare rebuilds and deploys it on every push to `main`, so there's nothing to paste.
 
 **Keys stay out of this repository.** The rail and TfL keys live in the Worker's secrets in Cloudflare. `trmnl-transport/.trmnlp.yml` has a placeholder for local previews only; don't commit a real key there.
 

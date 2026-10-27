@@ -1,6 +1,6 @@
 # TRMNL server on Cloudflare
 
-Your TRMNL talks to this server instead of TRMNL's own. It shows **weather** all the time, a **rain radar** in turns with the weather when rain is near, and **live bus and train times** when you press the button. Press again for the radar, and once more to go back to weather. Leave transport alone and it goes back to weather on its own after 2 minutes.
+Your TRMNL talks to this server instead of TRMNL's own. It shows **weather** all the time (a **written forecast** in its place from 6 to 9am), a **rain radar** in turns with the weather when rain is near, and **live bus and train times** when you press the button. Press again for the radar, again for the written forecast, and once more to go back to weather. Leave transport alone and it goes back to weather on its own after 2 minutes.
 
 How it works:
 
@@ -9,7 +9,9 @@ How it works:
 - **Timer wake when rain is near:** if it's raining at your location, rain is due in the next 2 hours, or the chance of rain is 60% or more (from Open-Meteo), the server swaps between the radar map and the weather every 15 minutes instead. Once it's dry again, it's back to weather every 20 minutes.
 - **Button wake:** the server fetches TfL and National Rail times right then, draws the transport screen, and tells the TRMNL to come back in 2 minutes. That next wake is a timer wake, so weather returns.
 - **Button wake while buses are showing:** the radar, which stays up for 15 minutes and then goes back to weather.
-- **Button wake while the radar is showing:** back to weather. So the button steps weather, transport, radar, weather, whether or not rain is near. With `RADAR` set to `off` it just swaps weather and transport.
+- **Button wake while the radar is showing:** the written forecast, which stays up for 15 minutes.
+- **Button wake while the forecast is showing:** back to weather. So the button steps weather, transport, radar, forecast, weather, whether or not rain is near. With `RADAR` set to `off` it skips the radar.
+- **Mornings:** from 6 to 9am the written forecast takes the weather screen's place on timer wakes (and takes turns with the radar if rain is near). A button press still steps through the screens as usual.
 - The server knows which screen is up from the wake interval the TRMNL reports. Transport's interval is set one second off a whole minute to mark it (radar two seconds, rainy weather three), so the server needs no storage.
 - It draws the screens from your three plugins, `../trmnl-transport`, `../trmnl-weather` and `../trmnl-radar`, so they look the same as they would on TRMNL's service. Cloudflare's headless browser turns each one into a black-and-white image of about 15 KB.
 
@@ -89,6 +91,7 @@ Add these as plain-text **Variables** on the Worker. They're all optional.
 | `WEATHER_MINUTES` | `20` | How often the weather screen redraws |
 | `RAIN_MINUTES` | `15` | When rain is near, how long each of radar and weather stays up. Also how long the radar stays after a press |
 | `RADAR` | on | Set to `off` to never show the radar |
+| `FORECAST_HOURS` | `6-9` | When the written forecast replaces the weather screen, from the first hour up to the second. `off` to only show it from the button |
 | `BUS_STOP_1`, `BUS_STOP_2` | `490004972S`, `490004972N` | TfL stop IDs (Champion Grove E and H) |
 | `STATION_CRS` | `DMK` | Main station, split by operator |
 | `STATION_OPERATORS` | `Thameslink, London Overground, Southeastern` | Operators to split it by |

@@ -82,6 +82,7 @@ globalThis.fetch = async (input, init = {}) => {
 };
 
 const env = {
+  FORECAST_HOURS: 'off', // so the wake tests don't depend on the time of day
   SECRET: 'test-secret-123456',
   RAIL_KEY: 'test-rail-key',
   TFL_KEY: 'test-tfl-key',
@@ -93,29 +94,44 @@ const base = 'https://trmnl.example.workers.dev/test-secret-123456';
 const get = (path, headers = {}) => worker.fetch(new Request(base + path, { headers }), env);
 
 // The choice of screen
-assert.deepEqual(chooseScreen('timer', '1200', {}), { screen: 'weather', refresh: 1200 });
-assert.deepEqual(chooseScreen('button', '1200', {}), { screen: 'transport', refresh: 121 });
-assert.deepEqual(chooseScreen('button', '121', {}), { screen: 'radar', refresh: 902 }); // press again: radar
-assert.deepEqual(chooseScreen('button', '902', {}), { screen: 'weather', refresh: 1200 }); // and again: weather
-assert.deepEqual(chooseScreen('button', '121', { RADAR: 'off' }), { screen: 'weather', refresh: 1200 });
-assert.deepEqual(chooseScreen('timer', '121', {}), { screen: 'weather', refresh: 1200 }); // time's up: back
-assert.deepEqual(chooseScreen('timer', '902', {}), { screen: 'weather', refresh: 1200 }); // radar time's up when dry
-assert.equal(chooseScreen('button', null, {}).screen, 'transport');
-assert.equal(chooseScreen('powercycle', null, {}).screen, 'weather');
-assert.equal(chooseScreen('EXT1', '1200', { TRANSPORT_MINUTES: '5' }).refresh, 301);
-assert.equal(chooseScreen('button', '1200', { TRANSPORT_MINUTES: '20' }).screen, 'transport'); // same minutes still tell apart
+// Noon and 7am in London, so the tests don't depend on when they run.
+const NOON = new Date('2026-10-26T12:00:00Z'), SEVEN = new Date('2026-10-26T07:00:00Z');
+const choose = (source, current, env, rain = false, now = NOON) => chooseScreen(source, current, env, rain, now);
+assert.deepEqual(choose('timer', '1200', {}), { screen: 'weather', refresh: 1200 });
+assert.deepEqual(choose('button', '1200', {}), { screen: 'transport', refresh: 121 });
+assert.deepEqual(choose('button', '121', {}), { screen: 'radar', refresh: 902 }); // press again: radar
+assert.deepEqual(choose('button', '902', {}), { screen: 'forecast', refresh: 904 }); // and again: written forecast
+assert.deepEqual(choose('button', '904', {}), { screen: 'weather', refresh: 1200 }); // and again: weather
+assert.deepEqual(choose('timer', '904', {}), { screen: 'weather', refresh: 1200 }); // forecast time's up
+assert.deepEqual(choose('button', '121', { RADAR: 'off' }), { screen: 'forecast', refresh: 904 });
+assert.deepEqual(choose('timer', '121', {}), { screen: 'weather', refresh: 1200 }); // time's up: back
+assert.deepEqual(choose('timer', '902', {}), { screen: 'weather', refresh: 1200 }); // radar time's up when dry
+assert.equal(choose('button', null, {}).screen, 'transport');
+assert.equal(choose('powercycle', null, {}).screen, 'weather');
+assert.equal(choose('EXT1', '1200', { TRANSPORT_MINUTES: '5' }).refresh, 301);
+assert.equal(choose('button', '1200', { TRANSPORT_MINUTES: '20' }).screen, 'transport'); // same minutes still tell apart
 // Rain near: timer wakes take turns between radar and weather; the button still steps through all three.
-assert.deepEqual(chooseScreen('timer', '1200', {}, true), { screen: 'radar', refresh: 902 });
-assert.deepEqual(chooseScreen('timer', '902', {}, true), { screen: 'weather', refresh: 903 });
-assert.deepEqual(chooseScreen('timer', '903', {}, true), { screen: 'radar', refresh: 902 });
-assert.deepEqual(chooseScreen('timer', '902', {}, false), { screen: 'weather', refresh: 1200 }); // rain gone
-assert.deepEqual(chooseScreen('button', '903', {}, true), { screen: 'transport', refresh: 121 });
-assert.deepEqual(chooseScreen('button', '902', {}, true), { screen: 'weather', refresh: 903 }); // radar -> weather
-assert.deepEqual(chooseScreen('timer', '121', {}, true), { screen: 'weather', refresh: 903 });
-assert.equal(chooseScreen('timer', '1200', { RAIN_MINUTES: '10' }, true).refresh, 602);
+assert.deepEqual(choose('timer', '1200', {}, true), { screen: 'radar', refresh: 902 });
+assert.deepEqual(choose('timer', '902', {}, true), { screen: 'weather', refresh: 903 });
+assert.deepEqual(choose('timer', '903', {}, true), { screen: 'radar', refresh: 902 });
+assert.deepEqual(choose('timer', '902', {}, false), { screen: 'weather', refresh: 1200 }); // rain gone
+assert.deepEqual(choose('button', '903', {}, true), { screen: 'transport', refresh: 121 });
+assert.deepEqual(choose('button', '902', {}, true), { screen: 'forecast', refresh: 904 }); // radar -> forecast
+assert.deepEqual(choose('button', '904', {}, true), { screen: 'weather', refresh: 903 }); // forecast -> weather
+assert.deepEqual(choose('timer', '121', {}, true), { screen: 'weather', refresh: 903 });
+assert.equal(choose('timer', '1200', { RAIN_MINUTES: '10' }, true).refresh, 602);
+// Mornings: the written forecast stands in for weather on timer wakes; the button works as usual.
+assert.deepEqual(choose('timer', '1200', {}, false, SEVEN), { screen: 'forecast', refresh: 1200 });
+assert.deepEqual(choose('timer', '902', {}, true, SEVEN), { screen: 'forecast', refresh: 903 });
+assert.deepEqual(choose('timer', '903', {}, true, SEVEN), { screen: 'radar', refresh: 902 });
+assert.deepEqual(choose('button', '1200', {}, false, SEVEN), { screen: 'transport', refresh: 121 });
+assert.deepEqual(choose('button', '904', {}, false, SEVEN), { screen: 'weather', refresh: 1200 }); // a press still reaches weather
+assert.deepEqual(choose('timer', '1200', { FORECAST_HOURS: 'off' }, false, SEVEN), { screen: 'weather', refresh: 1200 });
+assert.deepEqual(choose('timer', '1200', { FORECAST_HOURS: '7-8' }, false, new Date('2026-10-26T08:00:00Z')), { screen: 'weather', refresh: 1200 });
 assert.equal(needsRainCheck('button', '1200', {}), false); // opening transport doesn't wait for a forecast
 assert.equal(needsRainCheck('button', '121', {}), false); // nor does opening the radar
-assert.equal(needsRainCheck('button', '902', {}), true);
+assert.equal(needsRainCheck('button', '902', {}), false); // radar -> forecast
+assert.equal(needsRainCheck('button', '904', {}), true); // forecast -> weather
 assert.equal(needsRainCheck('timer', '1200', {}), true);
 assert.equal(needsRainCheck('timer', '1200', { RADAR: 'off' }), false);
 assert.equal(utcOffset('Europe/London', new Date('2026-07-01T12:00:00Z')), 3600);
@@ -186,11 +202,14 @@ const after = await (await get('/api/display', { 'Update-Source': 'timer', 'Refr
 assert.ok(after.image_url.includes('/screen/weather-'), after.image_url);
 raining = false;
 
-// Pressing again while transport is up shows the radar, and once more goes back to weather.
+// Pressing again while transport is up shows the radar, then the written forecast, then weather.
 const toRadar = await (await get('/api/display', { 'Update-Source': 'button', 'Refresh-Rate': '121' })).json();
 assert.ok(toRadar.image_url.includes('/screen/radar-'), toRadar.image_url);
 assert.equal(toRadar.refresh_rate, 902);
-const back = await (await get('/api/display', { 'Update-Source': 'button', 'Refresh-Rate': '902' })).json();
+const toForecast = await (await get('/api/display', { 'Update-Source': 'button', 'Refresh-Rate': '902' })).json();
+assert.ok(toForecast.image_url.includes('/screen/forecast-'), toForecast.image_url);
+assert.equal(toForecast.refresh_rate, 904);
+const back = await (await get('/api/display', { 'Update-Source': 'button', 'Refresh-Rate': '904' })).json();
 assert.ok(back.image_url.includes('/screen/weather-'), back.image_url);
 assert.equal(back.refresh_rate, 1200);
 
