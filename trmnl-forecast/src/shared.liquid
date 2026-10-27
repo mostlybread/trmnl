@@ -1,0 +1,211 @@
+{%- comment -%}
+  The day's weather written out as a few sentences, under a large date, with
+  small weather icons in the text. One polling URL (Open-Meteo), so its answer
+  arrives at the top level: current, hourly (36 hours from this hour), daily
+  (today and tomorrow, with sunrise and sunset).
+{%- endcomment -%}
+
+{%- comment -%} A time like 16:00 as "4pm". Args: t (HH:MM or an hourly time) {%- endcomment -%}
+{% template clock %}
+{%- assign hm = t | slice: -5, 5 -%}{%- assign h = hm | slice: 0, 2 | plus: 0 -%}{%- assign m = hm | slice: 3, 2 -%}
+{%- if h == 0 and m == "00" -%}midnight{%- elsif h == 12 and m == "00" -%}midday{%- else -%}
+{%- assign h12 = h | modulo: 12 -%}{%- if h12 == 0 -%}{%- assign h12 = 12 -%}{%- endif -%}
+{{ h12 }}{% if m != "00" %}:{{ m }}{% endif %}{% if h < 12 %}am{% else %}pm{% endif %}
+{%- endif -%}
+{% endtemplate %}
+
+{%- comment -%} Weather in a few lower-case words. Args: code, night {%- endcomment -%}
+{% template words %}
+{%- case code -%}
+  {%- when 0 -%}{% if night %}clear{% else %}sunny{% endif %}
+  {%- when 1 -%}{% if night %}mostly clear{% else %}mostly sunny{% endif %}
+  {%- when 2 -%}{% if night %}partly cloudy{% else %}sunny spells{% endif %}
+  {%- when 3 -%}cloudy
+  {%- when 45, 48 -%}foggy
+  {%- when 51, 53, 55 -%}drizzly
+  {%- when 56, 57, 66, 67 -%}freezing rain
+  {%- when 61, 63 -%}rainy
+  {%- when 65 -%}heavy rain
+  {%- when 71, 73, 75, 77, 85, 86 -%}snowy
+  {%- when 80, 81 -%}showery
+  {%- when 82 -%}heavy showers
+  {%- when 95, 96, 99 -%}stormy
+  {%- else -%}cloudy
+{%- endcase -%}
+{% endtemplate %}
+
+{%- comment -%} A weather icon sitting in a line of text {%- endcomment -%}
+{% template ico %}<span class="fc-ico">{% render "weather_icon", code: code, night: night, size: "1.5em" %}</span>{% endtemplate %}
+
+<style>
+  .fc { font-family: "Inter Variable", Inter, sans-serif; color: black; display: flex; flex-direction: column; width: 100%; height: 100%; }
+  .fc-head { display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 3px solid black; padding-bottom: 12px; }
+  .fc-day { font-size: 26px; font-weight: 600; line-height: 1; letter-spacing: 0.18em; text-transform: uppercase; }
+  .fc-date { font-size: 68px; font-weight: 800; line-height: 1; letter-spacing: -0.025em; margin-top: 8px; }
+  .fc-now { display: flex; align-items: center; gap: 12px; }
+  .fc-now .fc-temp { font-size: 76px; font-weight: 300; line-height: 1; letter-spacing: -0.04em; }
+  .fc-body { flex: 1; display: flex; flex-direction: column; justify-content: center; font-size: 27px; line-height: 1.45; font-weight: 450; }
+  .fc-body p { margin: 0 0 10px 0; }
+  .fc-body p:last-child { margin-bottom: 0; }
+  .fc-body b { font-weight: 750; }
+  .fc-lead { font-style: italic; font-weight: 600; }
+  .fc-ico { display: inline-block; vertical-align: -0.38em; margin: 0 0.1em 0 0.28em; }
+  .fc-ico svg { display: block; }
+  .fc-foot { display: flex; justify-content: space-between; font-size: 18px; font-weight: 600; border-top: 1.5px solid black; padding-top: 8px; letter-spacing: 0.04em; text-transform: uppercase; }
+</style>
+
+{%- comment -%}
+  Weather icon drawn as SVG, so it needs no image hosting and stays sharp on e-ink.
+  Args: code (WMO weather code), night (true to show a moon), size (px).
+{%- endcomment -%}
+{% template weather_icon %}
+{%- assign k = "cloud" -%}
+{%- case code -%}
+  {%- when 0, 1 -%}{%- assign k = "sun" -%}
+  {%- when 2 -%}{%- assign k = "part" -%}
+  {%- when 3 -%}{%- assign k = "cloud" -%}
+  {%- when 45, 48 -%}{%- assign k = "fog" -%}
+  {%- when 51, 53, 55, 56, 57 -%}{%- assign k = "drizzle" -%}
+  {%- when 61, 63, 65, 66, 67 -%}{%- assign k = "rain" -%}
+  {%- when 71, 73, 75, 77, 85, 86 -%}{%- assign k = "snow" -%}
+  {%- when 80, 81, 82 -%}{%- assign k = "showers" -%}
+  {%- when 95, 96, 99 -%}{%- assign k = "storm" -%}
+{%- endcase -%}
+<svg class="wx-icon" viewBox="0 0 64 64" width="{{ size }}" height="{{ size }}" fill="white" stroke="black" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+  {%- if k == "sun" or k == "part" or k == "showers" -%}
+    {%- if k == "sun" -%}{%- assign cx = 32 -%}{%- assign cy = 32 -%}{%- assign r = 12 -%}{%- assign ray = 20 -%}
+    {%- else -%}{%- assign cx = 42 -%}{%- assign cy = 19 -%}{%- assign r = 9 -%}{%- assign ray = 15 -%}{%- endif -%}
+    {%- if night -%}
+      <path d="M{{ cx | plus: 2 }} {{ cy | minus: r | minus: 3 }} a{{ r | plus: 3 }} {{ r | plus: 3 }} 0 1 0 {{ r | plus: 5 }} {{ r | plus: 12 }} a{{ r }} {{ r }} 0 0 1 -{{ r | plus: 5 }} -{{ r | plus: 12 }}z" fill="black"/>
+    {%- else -%}
+      <g>
+        {%- for a in (0..7) -%}
+          {%- assign dx = "1,0.71,0,-0.71,-1,-0.71,0,0.71" | split: "," -%}
+          {%- assign dy = "0,0.71,1,0.71,0,-0.71,-1,-0.71" | split: "," -%}
+          {%- assign ix = dx[a] | times: 1.0 -%}{%- assign iy = dy[a] | times: 1.0 -%}
+          {%- assign inner = r | plus: 4 -%}
+          <line x1="{{ ix | times: inner | plus: cx }}" y1="{{ iy | times: inner | plus: cy }}" x2="{{ ix | times: ray | plus: cx }}" y2="{{ iy | times: ray | plus: cy }}"/>
+        {%- endfor -%}
+      </g>
+      <circle cx="{{ cx }}" cy="{{ cy }}" r="{{ r }}" fill="black"/>
+    {%- endif -%}
+  {%- endif -%}
+  {%- if k != "sun" and k != "fog" -%}
+    {%- assign lift = -8 -%}{%- assign shift = 0 -%}
+    {%- if k == "cloud" -%}{%- assign lift = 0 -%}{%- elsif k == "part" -%}{%- assign lift = 4 -%}{%- endif -%}
+    {%- if k == "part" or k == "showers" -%}{%- assign shift = -6 -%}{%- endif -%}
+    <path transform="translate({{ shift }} {{ lift }})" d="M18 50h30a10 10 0 0 0 1-20a14 14 0 0 0-27-4a12 12 0 0 0-4 24z"/>
+  {%- endif -%}
+  {%- case k -%}
+    {%- when "rain", "showers" -%}
+      <path d="M22 48l-3 9M32 48l-3 9M42 48l-3 9" stroke-width="4"/>
+    {%- when "drizzle" -%}
+      <path d="M23 50l-1 3M33 50l-1 3M43 50l-1 3M28 56l-1 3M38 56l-1 3" stroke-width="3.5"/>
+    {%- when "snow" -%}
+      <g fill="black" stroke="none"><circle cx="22" cy="51" r="2.6"/><circle cx="32" cy="55" r="2.6"/><circle cx="42" cy="51" r="2.6"/><circle cx="27" cy="59" r="2.6"/><circle cx="37" cy="59" r="2.6"/></g>
+    {%- when "storm" -%}
+      <path d="M34 40l-8 12h7l-4 10 11-14h-7l4-8z" fill="black" stroke-width="2"/>
+    {%- when "fog" -%}
+      <path d="M10 22h44M14 32h40M10 42h40M16 52h34"/>
+  {%- endcase -%}
+</svg>
+{% endtemplate %}
+
+
+
+{%- assign settings = trmnl.plugin_settings.custom_fields_values -%}
+{%- assign place = settings.place_name | default: "Forecast" -%}
+{%- assign utc_offset = trmnl.user.utc_offset | default: utc_offset_seconds | default: 0 -%}
+{%- assign now_s = "now" | date: "%s" | plus: utc_offset -%}
+{%- assign weekday = now_s | date: "%A" -%}
+{%- assign date_long = now_s | date: "%-d %B" -%}
+{%- assign night = false -%}{%- if current.is_day == 0 -%}{%- assign night = true -%}{%- endif -%}
+{%- assign code_now = current.weather_code | default: 3 -%}
+{%- assign hour_now = hourly.time[0] | slice: 11, 2 | plus: 0 -%}
+{%- assign last_hour = hourly.time.size | minus: 1 -%}
+
+{%- comment -%}
+  The stretch to describe: from now until 7am tomorrow, or until 6pm if it's
+  already the small hours.
+{%- endcomment -%}
+{%- if hour_now >= 7 -%}{%- assign span_end = 31 | minus: hour_now -%}{%- else -%}{%- assign span_end = 18 | minus: hour_now -%}{%- endif -%}
+{%- if span_end > last_hour -%}{%- assign span_end = last_hour -%}{%- endif -%}
+
+{%- comment -%} 1. Now {%- endcomment -%}
+{%- capture now_words -%}{% render "words", code: code_now, night: night %}{%- endcapture -%}
+{%- assign t_now = current.temperature_2m | round -%}
+{%- assign feels = current.apparent_temperature | round -%}
+
+{%- comment -%} 2. Rain: when it starts or stops, and the heaviest hour. Wet = 0.1 mm or a 50% chance. {%- endcomment -%}
+{%- assign wet_now = false -%}
+{%- if current.precipitation >= 0.1 -%}{%- assign wet_now = true -%}{%- endif -%}
+{%- if code_now >= 51 and code_now <= 67 -%}{%- assign wet_now = true -%}{%- endif -%}
+{%- if code_now >= 80 -%}{%- assign wet_now = true -%}{%- endif -%}
+{%- assign r_start = nil -%}{%- assign r_end = nil -%}{%- assign r_peak = nil -%}{%- assign peak_mm = 0 -%}
+{%- assign showery = false -%}{%- assign rain_code = 61 -%}
+{%- if wet_now -%}{%- assign r_start = 0 -%}{%- endif -%}
+{%- for i in (0..span_end) -%}
+  {%- assign mm = hourly.precipitation[i] | default: 0 -%}
+  {%- assign pc = hourly.precipitation_probability[i] | default: 0 -%}
+  {%- assign c = hourly.weather_code[i] | default: 0 -%}
+  {%- assign wet = false -%}
+  {%- if mm >= 0.1 or pc >= 50 -%}{%- assign wet = true -%}{%- endif -%}
+  {%- if i == 0 and wet_now -%}{%- assign wet = true -%}{%- endif -%}
+  {%- if wet -%}
+    {%- if r_start == nil -%}{%- assign r_start = i -%}{%- endif -%}
+    {%- if r_end == nil -%}
+      {%- if mm > peak_mm -%}{%- assign peak_mm = mm -%}{%- assign r_peak = i -%}{%- endif -%}
+      {%- if c >= 80 and c <= 82 -%}{%- assign showery = true -%}{%- assign rain_code = c -%}{%- elsif c >= 51 -%}{%- assign rain_code = c -%}{%- endif -%}
+    {%- endif -%}
+  {%- elsif r_start != nil and r_end == nil -%}
+    {%- assign r_end = i -%}
+  {%- endif -%}
+{%- endfor -%}
+{%- if showery -%}{%- assign rain_word = "Showers" -%}{%- assign rain_the = "the showers" -%}{%- else -%}{%- assign rain_word = "Rain" -%}{%- assign rain_the = "the rain" -%}{%- endif -%}
+
+{%- comment -%} 3. Temperatures: the high still to come today, and the low overnight {%- endcomment -%}
+{%- assign t_hi = t_now -%}{%- assign t_lo = t_now -%}{%- assign hi_i = 0 -%}
+{%- assign day0 = hourly.time[0] | slice: 8, 2 -%}
+{%- for i in (0..span_end) -%}
+  {%- assign hh = hourly.time[i] | slice: 11, 2 | plus: 0 -%}
+  {%- assign day_n = hourly.time[i] | slice: 8, 2 -%}
+  {%- assign t = hourly.temperature_2m[i] | round -%}
+  {%- assign same_day = false -%}{%- if day_n == day0 -%}{%- assign same_day = true -%}{%- endif -%}
+  {%- if same_day and hh < 19 and t > t_hi -%}{%- assign t_hi = t -%}{%- assign hi_i = i -%}{%- endif -%}
+  {%- if t < t_lo -%}{%- assign t_lo = t -%}{%- endif -%}
+{%- endfor -%}
+{%- comment -%} What the night sky looks like: the commonest sky in the dark hours {%- endcomment -%}
+{%- assign n_clear = 0 -%}{%- assign n_part = 0 -%}{%- assign n_cloud = 0 -%}
+{%- for i in (0..span_end) -%}
+  {%- if hourly.is_day[i] == 0 -%}
+    {%- assign c = hourly.weather_code[i] | default: 3 -%}
+    {%- if c <= 1 -%}{%- assign n_clear = n_clear | plus: 1 -%}{%- elsif c == 2 -%}{%- assign n_part = n_part | plus: 1 -%}{%- else -%}{%- assign n_cloud = n_cloud | plus: 1 -%}{%- endif -%}
+  {%- endif -%}
+{%- endfor -%}
+{%- assign night_sky = "cloudy" -%}
+{%- if n_part > n_cloud and n_part >= n_clear -%}{%- assign night_sky = "partly cloudy" -%}{%- endif -%}
+{%- if n_clear > n_cloud and n_clear > n_part -%}{%- assign night_sky = "clear" -%}{%- endif -%}
+{%- assign hi_hour = hourly.time[hi_i] | slice: 11, 2 | plus: 0 -%}
+{%- if hi_hour < 12 -%}{%- assign hi_when = "this morning" -%}{%- elsif hi_hour < 17 -%}{%- assign hi_when = "this afternoon" -%}{%- else -%}{%- assign hi_when = "this evening" -%}{%- endif -%}
+
+{%- comment -%} 4. Wind: the strongest hour, where it's from, and gusts {%- endcomment -%}
+{%- assign w_hi = current.wind_speed_10m | default: 0 -%}{%- assign g_hi = current.wind_gusts_10m | default: 0 -%}{%- assign w_dir = current.wind_direction_10m | default: 0 -%}
+{%- for i in (0..span_end) -%}
+  {%- assign w = hourly.wind_speed_10m[i] | default: 0 -%}
+  {%- if w > w_hi -%}{%- assign w_hi = w -%}{%- assign w_dir = hourly.wind_direction_10m[i] | default: w_dir -%}{%- endif -%}
+  {%- assign g = hourly.wind_gusts_10m[i] | default: 0 -%}
+  {%- if g > g_hi -%}{%- assign g_hi = g -%}{%- endif -%}
+{%- endfor -%}
+{%- assign compass = "northerly,north-easterly,easterly,south-easterly,southerly,south-westerly,westerly,north-westerly" | split: "," -%}
+{%- assign w_idx = w_dir | plus: 22.5 | divided_by: 45 | floor | modulo: 8 -%}
+{%- assign w_from = compass[w_idx] -%}
+{%- assign w_round = w_hi | round -%}{%- assign g_round = g_hi | round -%}
+
+{%- comment -%} 5. Tomorrow {%- endcomment -%}
+{%- capture tmrw_words -%}{% render "words", code: daily.weather_code[1], night: false %}{%- endcapture -%}
+
+{%- comment -%} Sunrise and sunset: today's sunset if still to come, otherwise tomorrow's sunrise {%- endcomment -%}
+{%- assign now_hm = hourly.time[0] | slice: 11, 5 -%}
+{%- assign sunset = daily.sunset[0] | slice: 11, 5 -%}
+{%- assign sunrise_next = daily.sunrise[1] | slice: 11, 5 -%}
+{%- assign sunrise_today = daily.sunrise[0] | slice: 11, 5 -%}

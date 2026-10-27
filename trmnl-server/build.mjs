@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const PLUGINS = { transport: '../trmnl-transport', weather: '../trmnl-weather', radar: '../trmnl-radar' };
+const PLUGINS = { transport: '../trmnl-transport', weather: '../trmnl-weather', radar: '../trmnl-radar', forecast: '../trmnl-forecast' };
 
 // Just enough YAML for the settings.yml files trmnlp writes.
 function readSettings(text) {

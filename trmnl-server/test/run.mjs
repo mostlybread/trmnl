@@ -58,6 +58,7 @@ globalThis.fetch = async (input, init = {}) => {
     return reply({ current: { precipitation: 0 }, minutely_15: { precipitation: raining ? [0, 0, 0.3, 0.8, 1, 1, 0.5, 0.2] : [0, 0, 0, 0, 0, 0, 0, 0] },
       hourly: { precipitation_probability: raining ? [40, 80] : [5, 10] } });
   }
+  if (url.includes('api.open-meteo.com') && url.includes('forecast_hours=36')) return reply(fixture('../trmnl-forecast/tests/fixtures/open-meteo.json'));
   if (url.includes('api.open-meteo.com') && url.includes('forecast_hours=12')) return reply(fixture('../trmnl-radar/tests/fixtures/open-meteo.json'));
   if (url.includes('api.open-meteo.com')) return reply(fixture('../trmnl-weather/tests/fixtures/open-meteo.json'));
   if (url.includes('/browser-rendering/screenshot')) {
@@ -172,6 +173,15 @@ writeFileSync(join(out, 'radar.html'), radarHtml);
 assert.ok(!radarHtml.includes('Liquid error'), 'Liquid error in radar page');
 assert.match(radarHtml, /tilecache\.rainviewer\.com\/v2\/radar\/1792602600/); // newest radar image
 assert.match(radarHtml, /oldTiles: "[^"]*\/1792601400",\s+minutes: 20/); // older image for movement
+// The written forecast screen.
+const forecastHtml = await (await get('/screen/forecast.html')).text();
+writeFileSync(join(out, 'forecast.html'), forecastHtml);
+assert.ok(!forecastHtml.includes('Liquid error'), 'Liquid error in forecast page');
+assert.match(forecastHtml, /arrives around <b>4pm<\/b>/);
+const forecastPng = new Uint8Array(await (await worker.fetch(new Request(`${base}/screen/forecast-test.png`), env)).arrayBuffer());
+writeFileSync(join(out, 'forecast.png'), forecastPng);
+console.log(`forecast: ${forecastPng.length} bytes`);
+assert.ok(forecastPng.length > 5000 && forecastPng.length < 90000, `forecast image is ${forecastPng.length} bytes`);
 const after = await (await get('/api/display', { 'Update-Source': 'timer', 'Refresh-Rate': '902' })).json();
 assert.ok(after.image_url.includes('/screen/weather-'), after.image_url);
 raining = false;

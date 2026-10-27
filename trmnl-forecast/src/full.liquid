@@ -1,0 +1,54 @@
+<div class="fc">
+  <div class="fc-head">
+    <div>
+      <div class="fc-day">{{ weekday }}</div>
+      <div class="fc-date">{{ date_long }}</div>
+    </div>
+    <div class="fc-now">
+      {% render "weather_icon", code: code_now, night: night, size: 84 %}
+      <span class="fc-temp">{{ t_now }}°</span>
+    </div>
+  </div>
+
+  <div class="fc-body">
+    <p><span class="fc-lead">{{ now_words | capitalize }}</span>{% render "ico", code: code_now, night: night %} for now{% if feels != t_now %}, feeling like <b>{{ feels }}°</b>{% endif %}.
+    {%- if r_start == nil -%}
+      {%- if code_now <= 2 -%}{%- assign dry_code = code_now -%}{%- else -%}{%- assign dry_code = 3 -%}{%- endif %}
+      It should stay dry{% render "ico", code: dry_code, night: night %}{% if hour_now >= 7 %} through to tomorrow morning{% else %} until this evening{% endif %}.
+    {%- elsif r_start == 0 -%}
+      {%- if r_end %}
+      {{ rain_the | capitalize }}{% render "ico", code: rain_code, night: false %} should clear by <b>{% render "clock", t: hourly.time[r_end] %}</b>.
+      {%- else %}
+      {{ rain_word }}{% render "ico", code: rain_code, night: false %} carries on into the night.
+      {%- endif -%}
+    {%- else %}
+      {{ rain_word }}{% render "ico", code: rain_code, night: false %} arrive{% unless showery %}s{% endunless %} around <b>{% render "clock", t: hourly.time[r_start] %}</b>
+      {%- if peak_mm >= 0.5 and r_peak != r_start -%}, heaviest at <b>{% render "clock", t: hourly.time[r_peak] %}</b>{%- endif -%}
+      {%- if r_end %} and clear{% unless showery %}s{% endunless %} by <b>{% render "clock", t: hourly.time[r_end] %}</b>{% else %} and last{% unless showery %}s{% endunless %} into the night{% endif %}.
+    {%- endif -%}
+    </p>
+    <p>
+    {%- if hour_now < 17 and hi_i > 0 -%}
+      Highs of <b>{{ t_hi }}°</b> {{ hi_when }}, then a {{ night_sky }} night, down to <b>{{ t_lo }}°</b>.
+    {%- else -%}
+      A {{ night_sky }} night ahead, down to <b>{{ t_lo }}°</b>.
+    {%- endif %}
+    {% if w_round < 8 -%}Light winds
+    {%- elsif w_round < 15 -%}A gentle {{ w_from }} breeze
+    {%- elsif w_round < 22 -%}A brisk {{ w_from }} wind
+    {%- elsif w_round < 32 -%}A strong {{ w_from }} wind
+    {%- else -%}Gale-force {{ w_from }} winds{%- endif -%}
+    {%- if w_round >= 8 %}, up to {{ w_round }} mph{% endif -%}
+    {%- assign g_min = w_round | plus: 8 -%}
+    {%- if g_round >= g_min and g_round >= 20 %}, gusting to {{ g_round }}{% endif %}.
+    </p>
+    <p><span class="fc-lead">Tomorrow</span>{% render "ico", code: daily.weather_code[1], night: false %} looks {{ tmrw_words }}, <b>{{ daily.temperature_2m_max[1] | round }}°</b> by day and {{ daily.temperature_2m_min[1] | round }}° at night
+    {%- assign tp = daily.precipitation_probability_max[1] | default: 0 -%}
+    {%- if tp >= 30 %}, with a {{ tp }}% chance of rain{% endif %}.</p>
+  </div>
+
+  <div class="fc-foot">
+    <span>{% if now_hm < sunset %}Sunset {% render "clock", t: sunset %}{% else %}Sunrise {% render "clock", t: sunrise_next %}{% endif %}</span>
+    <span>{{ place }}</span>
+  </div>
+</div>
