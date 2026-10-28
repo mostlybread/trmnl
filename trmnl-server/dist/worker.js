@@ -382,7 +382,9 @@ From `+this.originalError.stack)}static is(e){return e?.[Yt]==="LiquidError"}},A
 {%- assign t_span = t_max | minus: t_min -%}
 {%- comment -%} At least 8 degrees of range, so a one-degree change doesn't look like a plunge {%- endcomment -%}
 {%- if t_span < 8 -%}{%- assign t_span = 8 -%}{%- endif -%}
-{%- assign top = 30 -%}
+{%- comment -%} An optional row of weather icons along the top, every icons_every hours {%- endcomment -%}
+{%- assign icons_every = icons_every | default: 0 -%}
+{%- if icons_every > 0 -%}{%- assign top = 64 -%}{%- else -%}{%- assign top = 30 -%}{%- endif -%}
 {%- comment -%} An optional wind row (arrow and mph) goes under the chance-of-rain row {%- endcomment -%}
 {%- assign wind_every = wind_every | default: 0 -%}
 {%- if wind_every > 0 and hourly.wind_speed_10m -%}{%- assign axis = h | minus: 68 -%}{%- else -%}{%- assign wind_every = 0 -%}{%- assign axis = h | minus: 44 -%}{%- endif -%}
@@ -424,7 +426,7 @@ From `+this.originalError.stack)}static is(e){return e?.[Yt]==="LiquidError"}},A
         {%- assign nx = i | times: colw | plus: 4 | round: 1 -%}
         <rect x="{{ nx }}" y="0" width="{{ colw | plus: 0.5 | round: 1 }}" height="{{ axis }}" fill="url(#night)"/>
         {%- assign prev = i | minus: 1 -%}
-        {%- if i == 0 or hourly.is_day[prev] == 1 -%}
+        {%- if icons_every == 0 and i == 0 or icons_every == 0 and hourly.is_day[prev] == 1 -%}
           {%- assign mx = nx | plus: 4 -%}
           <g transform="translate({{ mx }} 4)"><circle cx="10" cy="10" r="9" fill="black" stroke="white" stroke-width="2"/><circle cx="15" cy="7" r="8" fill="white"/></g>
         {%- endif -%}
@@ -444,6 +446,16 @@ From `+this.originalError.stack)}static is(e){return e?.[Yt]==="LiquidError"}},A
       {%- endif -%}
     {%- endif -%}
   {%- endfor -%}
+  {%- if icons_every > 0 -%}
+    {%- for i in (0..last) -%}
+      {%- assign iskip = i | modulo: icons_every -%}
+      {%- if iskip == 0 -%}
+        {%- assign ix = i | plus: 0.5 | times: colw | plus: 4 | minus: 15 | round: 1 -%}
+        {%- assign inight = false -%}{%- if hourly.is_day[i] == 0 -%}{%- assign inight = true -%}{%- endif -%}
+        <g transform="translate({{ ix }} 1)"><rect x="1" y="1" width="28" height="28" rx="6" fill="white"/>{% render "weather_icon", code: hourly.weather_code[i], night: inight, size: 30 %}</g>
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endif -%}
   <line x1="0" y1="{{ axis }}" x2="{{ w }}" y2="{{ axis }}" stroke="black" stroke-width="2"/>
   <polyline points="{{ points }}" fill="none" stroke="white" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>
   <polyline points="{{ points }}" fill="none" stroke="black" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
@@ -522,38 +534,43 @@ From `+this.originalError.stack)}static is(e){return e?.[Yt]==="LiquidError"}},A
   .wx-nowrap { white-space: nowrap; }
   .wx-arrow { vertical-align: -0.15em; }
   .rain-note { white-space: nowrap; align-self: flex-start; }
+  .wx-full { display: flex; flex-direction: column; width: 100%; height: 100%; gap: 10px; }
+  .wx-body { flex: 1 1 0; min-height: 0; display: flex; flex-direction: row; gap: 20px; }
+  .wx-body > .wx-main { flex: 1 1 0; }
+  .wx-head { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 3px solid black; padding-bottom: 6px; }
+  .wx-date { font-family: var(--value-font-family); font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -0.01em; }
+  .wx-place { font-family: var(--value-font-family); font-size: 17px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .wx-summary { font-family: var(--value-font-family); font-size: 23px; font-weight: 700; line-height: 1.2; background: black; color: white; border-radius: 8px; padding: 6px 12px; align-self: stretch; }
   .wx-key { display: inline-block; width: 0.9em; height: 0.9em; border: 1.5px solid black; vertical-align: -0.1em; }
   .wx-key--light { background: repeating-linear-gradient(45deg, black 0 2px, white 2px 4px); }
 </style>
-`,full:`<div class="layout layout--row layout--left layout--stretch-y gap--large">
-  <div class="flex flex--col flex--left gap stretch wx-main">
-    <div class="flex flex--row flex--left flex--center-y gap--large w--full">
-      {% render "weather_icon", code: current.weather_code, night: night, size: 110 %}
-      <span class="value value--xxxlarge">{{ current.temperature_2m | round }}\xB0</span>
-      <div class="flex flex--col flex--left gap--xsmall">
-        <span class="label label--underline">{{ today }}</span>
-        <span class="title title--large">{% render "weather_words", code: current.weather_code %}</span>
-        <span class="label">Feels {{ current.apparent_temperature | round }}\xB0</span>
-        {% render "wind", speed: current.wind_speed_10m, dir: current.wind_direction_10m, gust: current.wind_gusts_10m %}
-        <span class="label">Today {{ daily.temperature_2m_max[0] | round }}\xB0 / {{ daily.temperature_2m_min[0] | round }}\xB0</span>
+`,full:`<div class="wx-full">
+  <div class="wx-head">
+    <span class="wx-date">{{ today }}</span>
+    <span class="wx-place">{{ place }}</span>
+  </div>
+  <div class="wx-body">
+    <div class="flex flex--col flex--left gap--small wx-main">
+      <div class="flex flex--row flex--left flex--center-y gap--large w--full">
+        {% render "weather_icon", code: current.weather_code, night: night, size: 96 %}
+        <span class="value value--xxlarge">{{ current.temperature_2m | round }}\xB0</span>
+        <div class="flex flex--col flex--left gap--xsmall">
+          <span class="title title--large">{% render "weather_words", code: current.weather_code %}</span>
+          <span class="label">Feels {{ current.apparent_temperature | round }}\xB0 \xB7 Today {{ daily.temperature_2m_max[0] | round }}\xB0 / {{ daily.temperature_2m_min[0] | round }}\xB0</span>
+          {% render "wind", speed: current.wind_speed_10m, dir: current.wind_direction_10m, gust: current.wind_gusts_10m %}
+        </div>
+      </div>
+      <div class="wx-summary">{{ summary }}</div>
+      <div class="chart-box">
+        {% render "rain_temp_chart", hourly: hourly, hours: 13, w: 540, h: 258, wind_every: 2, icons_every: 1 %}
       </div>
     </div>
-    <span class="label label--inverted rain-note">{{ summary }}</span>
-    {% render "chart_key" %}
-    <div class="chart-box">
-      {% render "rain_temp_chart", hourly: hourly, hours: 13, w: 540, h: 222, wind_every: 2 %}
+    <div class="flex flex--col flex--around flex--left wx-days">
+      {% render "day", daily: daily, i: 1, label: "Tomorrow", size: 52 %}
+      {% render "day", daily: daily, i: 2, label: nil, size: 52 %}
+      {% render "day", daily: daily, i: 3, label: nil, size: 52 %}
     </div>
   </div>
-  <div class="flex flex--col flex--around flex--left wx-days">
-    {% render "day", daily: daily, i: 1, label: "Tomorrow", size: 52 %}
-    {% render "day", daily: daily, i: 2, label: nil, size: 52 %}
-    {% render "day", daily: daily, i: 3, label: nil, size: 52 %}
-  </div>
-</div>
-
-<div class="title_bar">
-  <span class="title">Weather</span>
-  <span class="instance">{{ place }}</span>
 </div>
 `},radar:{polling_urls:["https://api.rainviewer.com/public/weather-maps.json","https://api.open-meteo.com/v1/forecast?latitude={{ location | split: ',' | first | strip }}&longitude={{ location | split: ',' | last | strip }}&current=temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m&forecast_hours=12&wind_speed_unit=mph&timezone=auto"],polling_headers:"",defaults:{location:"51.4660,-0.0880",place_name:"Denmark Hill"},shared:`{%- comment -%}
   Rain radar screen. Polling URLs, in order:

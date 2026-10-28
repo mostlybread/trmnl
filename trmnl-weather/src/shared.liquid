@@ -205,7 +205,9 @@
 {%- assign t_span = t_max | minus: t_min -%}
 {%- comment -%} At least 8 degrees of range, so a one-degree change doesn't look like a plunge {%- endcomment -%}
 {%- if t_span < 8 -%}{%- assign t_span = 8 -%}{%- endif -%}
-{%- assign top = 30 -%}
+{%- comment -%} An optional row of weather icons along the top, every icons_every hours {%- endcomment -%}
+{%- assign icons_every = icons_every | default: 0 -%}
+{%- if icons_every > 0 -%}{%- assign top = 64 -%}{%- else -%}{%- assign top = 30 -%}{%- endif -%}
 {%- comment -%} An optional wind row (arrow and mph) goes under the chance-of-rain row {%- endcomment -%}
 {%- assign wind_every = wind_every | default: 0 -%}
 {%- if wind_every > 0 and hourly.wind_speed_10m -%}{%- assign axis = h | minus: 68 -%}{%- else -%}{%- assign wind_every = 0 -%}{%- assign axis = h | minus: 44 -%}{%- endif -%}
@@ -247,7 +249,7 @@
         {%- assign nx = i | times: colw | plus: 4 | round: 1 -%}
         <rect x="{{ nx }}" y="0" width="{{ colw | plus: 0.5 | round: 1 }}" height="{{ axis }}" fill="url(#night)"/>
         {%- assign prev = i | minus: 1 -%}
-        {%- if i == 0 or hourly.is_day[prev] == 1 -%}
+        {%- if icons_every == 0 and i == 0 or icons_every == 0 and hourly.is_day[prev] == 1 -%}
           {%- assign mx = nx | plus: 4 -%}
           <g transform="translate({{ mx }} 4)"><circle cx="10" cy="10" r="9" fill="black" stroke="white" stroke-width="2"/><circle cx="15" cy="7" r="8" fill="white"/></g>
         {%- endif -%}
@@ -267,6 +269,16 @@
       {%- endif -%}
     {%- endif -%}
   {%- endfor -%}
+  {%- if icons_every > 0 -%}
+    {%- for i in (0..last) -%}
+      {%- assign iskip = i | modulo: icons_every -%}
+      {%- if iskip == 0 -%}
+        {%- assign ix = i | plus: 0.5 | times: colw | plus: 4 | minus: 15 | round: 1 -%}
+        {%- assign inight = false -%}{%- if hourly.is_day[i] == 0 -%}{%- assign inight = true -%}{%- endif -%}
+        <g transform="translate({{ ix }} 1)"><rect x="1" y="1" width="28" height="28" rx="6" fill="white"/>{% render "weather_icon", code: hourly.weather_code[i], night: inight, size: 30 %}</g>
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endif -%}
   <line x1="0" y1="{{ axis }}" x2="{{ w }}" y2="{{ axis }}" stroke="black" stroke-width="2"/>
   <polyline points="{{ points }}" fill="none" stroke="white" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>
   <polyline points="{{ points }}" fill="none" stroke="black" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
@@ -345,6 +357,13 @@
   .wx-nowrap { white-space: nowrap; }
   .wx-arrow { vertical-align: -0.15em; }
   .rain-note { white-space: nowrap; align-self: flex-start; }
+  .wx-full { display: flex; flex-direction: column; width: 100%; height: 100%; gap: 10px; }
+  .wx-body { flex: 1 1 0; min-height: 0; display: flex; flex-direction: row; gap: 20px; }
+  .wx-body > .wx-main { flex: 1 1 0; }
+  .wx-head { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 3px solid black; padding-bottom: 6px; }
+  .wx-date { font-family: var(--value-font-family); font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -0.01em; }
+  .wx-place { font-family: var(--value-font-family); font-size: 17px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .wx-summary { font-family: var(--value-font-family); font-size: 23px; font-weight: 700; line-height: 1.2; background: black; color: white; border-radius: 8px; padding: 6px 12px; align-self: stretch; }
   .wx-key { display: inline-block; width: 0.9em; height: 0.9em; border: 1.5px solid black; vertical-align: -0.1em; }
   .wx-key--light { background: repeating-linear-gradient(45deg, black 0 2px, white 2px 4px); }
 </style>
