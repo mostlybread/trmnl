@@ -540,7 +540,7 @@ From `+this.originalError.stack)}static is(e){return e?.[Yt]==="LiquidError"}},A
   .wx-head { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 3px solid black; padding-bottom: 6px; }
   .wx-date { font-family: var(--value-font-family); font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -0.01em; }
   .wx-place { font-family: var(--value-font-family); font-size: 17px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-  .wx-summary { font-family: var(--value-font-family); font-size: 23px; font-weight: 700; line-height: 1.2; background: black; color: white; border-radius: 8px; padding: 6px 12px; align-self: stretch; }
+  .wx-summary { font-family: var(--value-font-family); font-size: 24px; font-weight: 650; line-height: 1.2; color: black; border-left: 5px solid black; padding: 2px 0 2px 12px; align-self: stretch; }
   .wx-key { display: inline-block; width: 0.9em; height: 0.9em; border: 1.5px solid black; vertical-align: -0.1em; }
   .wx-key--light { background: repeating-linear-gradient(45deg, black 0 2px, white 2px 4px); }
 </style>
