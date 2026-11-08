@@ -338,6 +338,35 @@
 </div>
 {% endtemplate %}
 
+{%- comment -%}
+  One day as a card for the full screen's side column: name on top, a big icon with
+  the high and low beside it and the words under them, then rain and wind on one line.
+  Args: daily, i, label (optional, else the weekday), size (icon px).
+{%- endcomment -%}
+{% template day_card %}
+{%- assign code = daily.weather_code[i] -%}
+{%- assign compass = "N,NE,E,SE,S,SW,W,NW" | split: "," -%}
+{%- assign dir = daily.wind_direction_10m_dominant[i] | default: 0 -%}
+{%- assign idx = dir | plus: 22.5 | divided_by: 45 | floor | modulo: 8 -%}
+{%- assign toward = dir | plus: 180 | modulo: 360 -%}
+<div class="wx-card">
+  <div class="wx-card-name">{% if label %}{{ label }}{% else %}{{ daily.time[i] | date: "%A" }}{% endif %}</div>
+  <div class="wx-card-mid">
+    {% render "weather_icon", code: code, night: false, size: size %}
+    <div class="wx-card-temps">
+      <div><span class="wx-hi">{{ daily.temperature_2m_max[i] | round }}°</span><span class="wx-lo">/ {{ daily.temperature_2m_min[i] | round }}°</span></div>
+      <div class="wx-card-words">{% render "weather_words", code: code %}</div>
+    </div>
+  </div>
+  <div class="wx-card-facts">
+    <span><svg class="wx-arrow" viewBox="0 0 20 20" width="0.95em" height="0.95em"><path d="M10 2C7 7 4.5 10.5 4.5 13.5a5.5 5.5 0 0 0 11 0C15.5 10.5 13 7 10 2z" fill="black"/></svg> {{ daily.precipitation_probability_max[i] }}%{% if daily.precipitation_sum[i] >= 0.1 %} <span class="wx-mm">· {{ daily.precipitation_sum[i] | round: 1 }}mm</span>{% endif %}</span>
+    {%- if daily.wind_speed_10m_max -%}
+    <span><svg class="wx-arrow" viewBox="0 0 20 20" width="0.95em" height="0.95em"><g transform="rotate({{ toward }} 10 10)"><path d="M10 2l6 14-6-4-6 4z" fill="black"/></g></svg> {{ daily.wind_speed_10m_max[i] | round }} {{ compass[idx] }}</span>
+    {%- endif -%}
+  </div>
+</div>
+{% endtemplate %}
+
 <style>
   .wx-chart text { font-family: var(--font-small-font-family); fill: black; }
   .wx-chart .t-temp { font-family: var(--value-font-family); font-size: 21px; font-weight: 600; }
@@ -366,4 +395,16 @@
   .wx-summary { font-family: var(--value-font-family); font-size: 24px; font-weight: 650; line-height: 1.2; color: black; border-left: 5px solid black; padding: 2px 0 2px 12px; align-self: stretch; }
   .wx-key { display: inline-block; width: 0.9em; height: 0.9em; border: 1.5px solid black; vertical-align: -0.1em; }
   .wx-key--light { background: repeating-linear-gradient(45deg, black 0 2px, white 2px 4px); }
+  /* Next days on the full screen: one card each, filling the side column */
+  .wx-days--cards { flex: 0 0 262px; display: flex; flex-direction: column; justify-content: space-between; padding-left: 16px; border-left: 2px dotted black; }
+  .wx-card { display: flex; flex-direction: column; gap: 4px; font-family: var(--value-font-family); color: black; }
+  .wx-days--cards > .wx-card + .wx-card { border-top: 2px dotted black; padding-top: 8px; }
+  .wx-card-name { font-size: 19px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; line-height: 1; }
+  .wx-card-mid { display: flex; align-items: center; gap: 10px; }
+  .wx-card-temps { display: flex; flex-direction: column; min-width: 0; }
+  .wx-hi { font-size: 40px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+  .wx-lo { font-size: 24px; font-weight: 500; margin-left: 8px; }
+  .wx-card-words { font-size: 18px; font-weight: 600; line-height: 1.15; white-space: nowrap; overflow: hidden; }
+  .wx-card-facts { display: flex; justify-content: space-between; font-size: 19px; font-weight: 650; line-height: 1; white-space: nowrap; }
+  .wx-mm { font-weight: 500; }
 </style>
