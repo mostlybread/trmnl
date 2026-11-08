@@ -573,9 +573,9 @@ From `+this.originalError.stack)}static is(e){return e?.[Yt]==="LiquidError"}},L
   .wx-key { display: inline-block; width: 0.9em; height: 0.9em; border: 1.5px solid black; vertical-align: -0.1em; }
   .wx-key--light { background: repeating-linear-gradient(45deg, black 0 2px, white 2px 4px); }
   /* Next days on the full screen: one card each, filling the side column */
-  .wx-days--cards { flex: 0 0 262px; display: flex; flex-direction: column; justify-content: space-between; padding-left: 16px; border-left: 2px dotted black; }
-  .wx-card { display: flex; flex-direction: column; gap: 4px; font-family: var(--value-font-family); color: black; }
-  .wx-days--cards > .wx-card + .wx-card { border-top: 2px dotted black; padding-top: 8px; }
+  .wx-days--cards { flex: 0 0 262px; display: flex; flex-direction: column; padding-left: 16px; border-left: 2px dotted black; }
+  .wx-card { flex: 1 1 0; display: flex; flex-direction: column; justify-content: center; gap: 6px; font-family: var(--value-font-family); color: black; }
+  .wx-days--cards > .wx-card + .wx-card { border-top: 2px dotted black; }
   .wx-card-name { font-size: 19px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; line-height: 1; }
   .wx-card-mid { display: flex; align-items: center; gap: 10px; }
   .wx-card-temps { display: flex; flex-direction: column; min-width: 0; }
